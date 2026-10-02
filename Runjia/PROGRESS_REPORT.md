@@ -4,7 +4,7 @@
 > for every number with its settings, `FINDINGS_LOG.md` for the chronological
 > record). Those are not in this repository, so references to them below are
 > plain names rather than links.
-> Synced 2026-10-02.
+> Synced 2026-10-03.
 
 # What determines whether a CRISPR guide works in *E. coli*
 
@@ -33,7 +33,8 @@ smooth compositional gradient rather than a pattern; two of our own positive
 results were overturned by their own controls; and the interpretability claimed
 across this literature does not survive being measured. As a by-product the
 project reaches parity with the best published bacterial model on identical
-data, with a model that trains in 0.3 seconds on a laptop.
+data, with a model whose whole five-fold run takes about three minutes on a
+laptop CPU against nearly two hours for the competing network.
 
 ---
 
@@ -201,10 +202,15 @@ Their arm is one seed against our two, their hyper-parameters were tuned by
 them on their own split rather than re-tuned here, and crisprHAL 2 generalises
 across organisms and nucleases while this project is *E. coli* SpCas9 only.
 
-What makes it worth reporting is the cost: LightGBM fits in **0.3 seconds on a
-CPU**, against **125 minutes** for crisprHAL 2's five folds on the same
-machine — roughly a 25,000-fold difference — and every feature it uses has a
-name.
+What makes it worth reporting is the cost. Measured end to end on the same
+machine, our five-fold run takes **about 3 minutes** against crisprHAL 2's
+**105 minutes** — roughly **36×** — and every feature it uses has a name.
+
+An earlier version of this report said "0.3 seconds", which was wrong twice
+over: that figure counted only the final model fit and left out the feature
+selection that produces its inputs, and nothing in the project had ever
+measured it. The corrected numbers, and an honest note about how much they
+vary on a machine that swaps, are in `RESULTS.md` §14.
 
 ### What the three actually differ in
 
@@ -1044,7 +1050,7 @@ compute.
 ## What exists now
 
 - **31 Python modules, about 7,300 lines**, in `src/sgrna/`.
-- **54 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
+- **55 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
 - **A 41-cell notebook** running the whole pipeline locally through Colab,
   saving progress after every step.
 - **Three documents**: this report (merged with the former `NOVELTY.md` on
