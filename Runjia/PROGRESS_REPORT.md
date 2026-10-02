@@ -371,18 +371,19 @@ where its guides sit. They are not spread across the chromosome:
 | eSpCas9, *E. coli* | all five arcs, genome-wide | — |
 | TevSpCas9, *C. rodentium* | **229 kb — 4.3% of the chromosome** | **110 guides per kb** |
 
-It densely tiles a single locus. A gradient measured over windows of 50–1000
-letters needs genome-scale variation to exist at all, and across 229 kb there
-is almost none — which shows up directly in the numbers: flank GC correlates
-**−0.022** with cutting there, against +0.159 and +0.138 in the two *E. coli*
-screens. **No choice of cross-validation fixes that.** The dataset cannot test
-the long-range hypothesis.
+It densely tiles a single locus, and that is the authors' own design — their
+paper says a 236 kb fragment was screened. Our measurement matches.
 
-Family A still helps there (+0.060, surviving 10 kb blocking), but its two
-halves become identical rather than long-range-dominant, and no individual
-long-range feature clears the project's 0.035 noise level. The honest reading
-is that its features help *within one locus of another organism* — not that the
-gradient generalises across species.
+The consequence is specific. Across 236 kb, flank composition barely varies, so
+there is almost nothing for a *correlation* to work with: flank GC correlates
+**−0.022** with cutting there, against +0.159 and +0.138 in the two *E. coli*
+screens. Family A still helps (+0.060, surviving 10 kb blocking), but its two
+halves become equal rather than long-range-dominant, and no individual
+long-range feature clears the project's 0.035 noise level.
+
+Read on its own, that says the gradient is absent in *C. rodentium*. The
+transfer experiment below shows it is not absent — it is **invisible to a
+correlation measured inside a 236 kb window**, which is a different thing.
 
 **What did replicate across both organisms** is the mechanism from the next
 section: GC-rich *targets* cut worse everywhere, and most strongly of all in
@@ -425,12 +426,44 @@ two screens use **the same guide library**, so the model has seen every test
 sequence before. It isolates the enzyme change cleanly and says nothing about
 unfamiliar DNA; it is not a generalisation result.
 
-**This resolves what looked like a contradiction.** The long-range gradient
-cannot be *learned* from the *C. rodentium* screen, because 229 kb contains no
-gradient to learn. But a model that learned it in *E. coli* *applies* it to
-*C. rodentium* successfully. Both statements hold, and together they say the
-limitation is in the available **data**, not in the biology — which only the
-model-transfer test could separate.
+**Which half of the flank features makes the crossing?** The long-range
+windows, in both directions — and overwhelmingly in the harder one:
+
+| trained on | tested on | base | + local ±10 nt | + long-range windows | + both |
+|---|---|---:|---:|---:|---:|
+| *E. coli* | *C. rodentium* | 0.626 | 0.661 | **0.665** | 0.700 |
+| *C. rodentium* | *E. coli* | 0.478 | 0.537 | **0.586** | 0.628 |
+
+In the second row, 88 long-range columns are worth +0.107 against 260 local
+columns' +0.058. That model was trained on guides from a single 236 kb window —
+the very window where a correlation finds nothing — and its long-range features
+still rank guides across an entire other genome.
+
+**So a relationship can be learnable from data too narrow to reveal it.**
+Measuring a correlation needs spread in the data; fitting a function needs
+rather less. Discovery and verification have different requirements, and
+treating them as the same is what made the earlier reading look conclusive.
+
+**Does the *E. coli* model then beat *C. rodentium*'s own model on
+*C. rodentium*?** No — but the part that matters does. Both are out-of-sample
+on the same guides:
+
+| predicting *C. rodentium* | its own model | the *E. coli* model |
+|---|---:|---:|
+| published features only | **0.704** | 0.626 |
+| + flank features | **0.764** | 0.700 |
+| *what the flank features added* | *+0.060* | ***+0.074*** |
+
+The local model wins overall by 0.064, and **all of that advantage is in the
+base features** — it knows its own screen's label scale, nuclease and
+sequence-to-score mapping. But the *E. coli*-trained model gets **more out of
+*C. rodentium*'s flanks than *C. rodentium*'s own model does.**
+
+The flank-to-efficiency relationship, in other words, is **better learned from
+a genome-wide screen in the wrong organism than from a narrow screen in the
+right one**. Breadth of genomic context beats species match for this component
+— which points at an improvement nobody has tried: learn the flank part where
+the variation is, and the enzyme-specific part where the labels are.
 
 ### What the competition's cross-species claim actually rests on
 
@@ -463,9 +496,11 @@ we have not. It is that **nobody has the dataset the question needs** — a
 genome-wide Cas9 screen in a bacterium other than *E. coli* — and this project
 is the one that measured why the existing substitutes cannot stand in for it.
 
-*(These figures come from the papers' abstracts and repositories rather than
-their full PDFs, and two sources disagree slightly on the* Salmonella *count.
-Check them against the PDFs before putting them in a manuscript.)*
+*(Verified against the* Nat Commun *full text: a 236 kb* C. rodentium
+*fragment, and 296 sgRNAs against a 2 kb* katG *fragment carried on a plasmid.
+The one point still unverified from a PDF is the crisprHAL 2 attribution — the
+PeerJ full text would not load here — so confirm that before a manuscript
+relies on it.)*
 
 ### The mechanism: which step is the bottleneck
 
