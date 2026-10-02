@@ -335,6 +335,45 @@ plausible mechanistic reason a GPU network on 33,495 rows ends up level with a
 establish *what shape* the signal has, and therefore how to encode it. Their
 architecture cannot easily test it.
 
+### It is not a property of this enzyme, or of this organism
+
+Everything above was measured on one screen: *E. coli*, WT-SpCas9. So the
+obvious objection is that the effect belongs to that enzyme or that genome
+rather than to DNA. crisprHAL ships three further screens, and two can answer.
+
+| screen | organism | nuclease | base | + flank features | gain |
+|---|---|---|---:|---:|---:|
+| WT-SpCas9 | *E. coli* | SpCas9 | 0.544 | 0.707 | **+0.163** |
+| eSpCas9 | *E. coli* | **eSpCas9** | 0.680 | **0.784** | **+0.103** |
+| TevSpCas9 | ***C. rodentium*** | **TevSpCas9** | 0.707 | **0.766** | **+0.060** |
+
+Every fold improves in both new screens (5/5, p = 2.6e-06 and 2.9e-05). The
+effect survives an engineered high-fidelity version of the enzyme, and survives
+a different organism with a fusion nuclease and a 54.7%-GC genome. The gradient
++0.163 → +0.103 → +0.060 tracks distance from the original setting: the effect
+weakens as the context changes, and never approaches the noise floor.
+
+**This retires the project's standing limitation.** "Only *E. coli*, only
+SpCas9" has been crisprHAL 2's clearest advantage since September; the evidence
+now spans two organisms and three nucleases.
+
+Three things it does *not* say, which belong in the write-up next to the table:
+
+- **The feature family transfers; a trained model has not been shown to.** Each
+  screen is trained and tested within itself, so the claim is "flank composition
+  is informative in *C. rodentium*", not "an *E. coli*-trained model ranks
+  *C. rodentium* guides". That is the harder claim and is the next experiment.
+- **Absolute scores are not comparable across screens** — eSpCas9 starts at
+  0.680 where WT starts at 0.544, which reflects that screen's label rather than
+  its enzyme. Only the within-screen gain means anything.
+- **The *C. rodentium* arm changes two things at once**, organism and enzyme.
+  eSpCas9 is the clean separation — one enzyme change inside one organism — and
+  it carries the larger of the two new gains.
+
+The fourth crisprHAL screen was deliberately **not** used: TevSaCas9's enzyme
+reads a different PAM, so this pipeline's position labels would have been
+misaligned against it. It would have produced numbers.
+
 ### The mechanism: which step is the bottleneck
 
 Two numbers point the same way: GC-rich targets cut worse (−0.20), and a guide
@@ -647,7 +686,12 @@ long-range windows worth more than immediate context on a clean label,
 downstream worth 3.4× upstream, and strand-invasion rather than hybridisation
 limiting (Part 3). This is *why* a 0.3-second tree matches a GPU network.
 
-**8. Parity with the state of the art at a thousandth of the compute**, from a
+**8. The flank effect shown to generalise across nucleases and organisms** —
++0.103 for a different enzyme in *E. coli* and +0.060 in *C. rodentium*, every
+fold improving in both (Part 3). This is the one place the project had a clear
+gap against crisprHAL 2, and it is now evidence rather than an assumption.
+
+**9. Parity with the state of the art at a thousandth of the compute**, from a
 feature set whose source paper reported R² 0.249 — now confirmed against a
 re-run of the competing model rather than its published number (Part 1).
 
@@ -722,17 +766,29 @@ Two of September's four priorities are now closed — the crisprHAL re-run
 (Part 1) and flank shape (Part 4) — and the third was substantially answered
 (Part 5.2). What remains:
 
-1. **Test whether the flank effect holds in other bacteria.** crisprHAL 2 is
-   validated in *C. rodentium* and *S. enterica* and we are *E. coli* only;
-   this is their clearest advantage and the cheapest way to close it. Their
-   repository already ships the guide sets with flanking context. Caveat to
-   state: those screens also use different enzymes, so species and enzyme would
-   be confounded.
-2. **Identify the ≈+0.007 R² residual** in local abundance — the only genuinely
+**Finish the transfer question before opening anything else.** It is now half
+done — the effect is known to survive a new enzyme and a new organism, but only
+as a feature family, and only as a headline number. Taking it to the same depth
+as the *E. coli* work means three more steps, in order:
+
+1. **Decompose family A in the new screens** exactly as Part 3 decomposed it
+   here: the immediate ±10 nt against the 50–1000 nt windows. If the long-range
+   half is again the larger one, then the *shape* of the effect transfers, not
+   just its sign — and the shape is the mechanistic claim.
+2. **Check the mechanism replicates**: do GC-rich targets still cut worse, does
+   downstream still outweigh upstream, does the distance profile still peak at
+   250–500 nt? A mechanism that holds in two organisms is a much stronger claim
+   than a gain that holds in two organisms.
+3. **Then the true model transfer** — train on *E. coli*, rank *C. rodentium*
+   guides. This is the claim a reader will assume we are making, so it should
+   either be demonstrated or explicitly disclaimed.
+
+Only then:
+
+4. **Identify the ≈+0.007 R² residual** in local abundance — the only genuinely
    unexplained signal left. Candidates: local protein occupancy, nucleotide
-   pools, something assay-specific. Needs data not currently on disk, which
-   makes this a natural stopping point for the current round.
-3. **Write it up.** Parts 2–7 are complete, measured, and self-consistent.
+   pools, something assay-specific. Needs data not currently on disk.
+5. **Write it up.** Parts 2–7 are complete, measured, and self-consistent.
 
 ### How to frame it
 
@@ -755,9 +811,11 @@ compute.
 
 ### Honest caveats to carry into the paper
 
-- **Only *E. coli*, only SpCas9.** crisprHAL 2 generalises across organisms and
-  nucleases. That is a real advantage on their side, and the one comparison this
-  project still loses.
+- **Two organisms and three nucleases, but one screen family.** The flank
+  effect now has evidence beyond *E. coli* SpCas9 (Part 3), so this is no longer
+  a bare limitation — but every screen comes from the same group's curation, and
+  the *C. rodentium* arm changes organism and enzyme together. crisprHAL 2 also
+  covers *S. enterica*, which this project does not.
 - **The +0.011 margin over crisprHAL 2 rests on one seed of their model**, with
   their hyper-parameters rather than re-tuned ones. Consistent across all five
   folds, but small; "comparable performance at a thousandth of the cost" is the
@@ -779,8 +837,8 @@ compute.
 
 ## What exists now
 
-- **30 Python modules, about 6,700 lines**, in `src/sgrna/`.
-- **50 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
+- **31 Python modules, about 7,000 lines**, in `src/sgrna/`.
+- **51 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
 - **A 41-cell notebook** running the whole pipeline locally through Colab,
   saving progress after every step.
 - **Three documents**: this report (merged with the former `NOVELTY.md` on
