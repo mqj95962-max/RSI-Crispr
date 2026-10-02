@@ -459,11 +459,34 @@ base features** — it knows its own screen's label scale, nuclease and
 sequence-to-score mapping. But the *E. coli*-trained model gets **more out of
 *C. rodentium*'s flanks than *C. rodentium*'s own model does.**
 
-The flank-to-efficiency relationship, in other words, is **better learned from
-a genome-wide screen in the wrong organism than from a narrow screen in the
-right one**. Breadth of genomic context beats species match for this component
-— which points at an improvement nobody has tried: learn the flank part where
-the variation is, and the enzyme-specific part where the labels are.
+That suggested the flank relationship might be **better** learned from a
+genome-wide screen in the wrong organism than from a narrow one in the right
+organism — and so that importing it should improve the local model. We tested
+that, and it is wrong on both counts.
+
+The comparison itself was flawed: the two gains sit on different starting
+points (0.626 against 0.704), and the model with more room to improve shows a
+bigger gain for free. So we ran the clean version — train a flank-only model on
+*E. coli*, use its prediction as a single extra column for a *C. rodentium*
+model that keeps its own labels:
+
+| what the *C. rodentium* model gets | ρ |
+|---|---:|
+| published features only | 0.704 |
+| **+ one imported column from the *E. coli* flank model** | **0.751** |
+| + its own 348 flank features | 0.764 |
+| + both | **0.764** |
+
+**Adding the import on top of local flank features is worth +0.0002 —
+nothing.** Whatever the *E. coli* model knows about flanks, *C. rodentium*'s
+own 236 kb of flanking DNA already supplies. The hybrid idea fails.
+
+**But a single imported number does 78% of the work of 348 local ones.** That
+is a compression result rather than new information — and it makes the shared-
+relationship claim stronger, not weaker. If the flank-to-efficiency function
+were organism-specific, a model fitted on *E. coli* could not stand in for 348
+locally-computed columns at 78% strength. It can. The relationship really is
+common to both organisms; the narrow screen simply is not short of it.
 
 ### What the competition's cross-species claim actually rests on
 
@@ -976,8 +999,8 @@ compute.
 
 ## What exists now
 
-- **31 Python modules, about 7,200 lines**, in `src/sgrna/`.
-- **52 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
+- **31 Python modules, about 7,300 lines**, in `src/sgrna/`.
+- **53 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
 - **A 41-cell notebook** running the whole pipeline locally through Colab,
   saving progress after every step.
 - **Three documents**: this report (merged with the former `NOVELTY.md` on
