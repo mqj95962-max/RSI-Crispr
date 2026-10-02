@@ -488,6 +488,50 @@ were organism-specific, a model fitted on *E. coli* could not stand in for 348
 locally-computed columns at 78% strength. It can. The relationship really is
 common to both organisms; the narrow screen simply is not short of it.
 
+### Where it stops: nothing transfers to human cells
+
+Noshay et al. published a human version of the same feature matrix, and
+**6,216 of its columns are identical** to the *E. coli* one — so a model can be
+carried across with no change of representation. Any failure therefore cannot
+be blamed on mismatched features.
+
+| | ρ |
+|---|---:|
+| *E. coli* model on *E. coli* (check against the frozen baseline) | 0.531 |
+| human model on human | 0.404 |
+| ***E. coli* model on human** | **−0.048** |
+| **human model on *E. coli*** | **−0.017** |
+
+**Both directions are useless — fractionally worse than guessing.** This
+matches what the competing group found when they applied human models to
+bacteria.
+
+**Why it fails is the interesting part.** This project's strongest single
+mechanism does not exist in human cells:
+
+| | *E. coli* | human |
+|---|---:|---:|
+| GC-rich target → cuts worse | **−0.20** | **+0.02** |
+| harder-to-melt target → cuts worse | **−0.20** | **+0.02** |
+
+In bacteria, prying the double helix open is the rate-limiting step, so
+GC-rich targets cut worse. In human cells that signal is simply absent. A
+model trained on *E. coli* carries a rule that is inert in human data — which
+is how a transfer ends up slightly *negative* rather than merely weak.
+Whatever limits editing in human cells (chromatin, repair choice, delivery) is
+invisible in these features.
+
+**So the project's scope is now measured, not assumed:**
+
+| how far the setting moves | how much of a local model's skill survives |
+|---|---:|
+| different nuclease, same organism | 87% |
+| **different organism, same kingdom** | **89–92%** |
+| **different kingdom** | **0%** |
+
+Everything here is a *bacterial* claim, and we can now say exactly where the
+boundary lies rather than hedging about it.
+
 ### What the competition's cross-species claim actually rests on
 
 Since "they generalise across species and we do not" has been this project's
@@ -1000,7 +1044,7 @@ compute.
 ## What exists now
 
 - **31 Python modules, about 7,300 lines**, in `src/sgrna/`.
-- **53 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
+- **54 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
 - **A 41-cell notebook** running the whole pipeline locally through Colab,
   saving progress after every step.
 - **Three documents**: this report (merged with the former `NOVELTY.md` on
