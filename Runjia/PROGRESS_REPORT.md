@@ -398,6 +398,75 @@ A fourth screen, TevSaCas9, was deliberately **not** used: its enzyme reads a
 different PAM, so this pipeline's position labels would have been misaligned
 against it. It would have produced numbers.
 
+### A model trained on one organism does rank another's guides
+
+The tests above all train and test within a single screen, which answers "are
+these features informative here?" — not "does a model built here work there?".
+That second question is the one a reader assumes, so it was measured directly:
+fit on every guide of one screen, predict every guide of another.
+
+| trained on | tested on | published features only | + flank features | that screen's own model |
+|---|---|---:|---:|---:|
+| *E. coli* (WT) | ***C. rodentium*** | 0.626 | **0.700** | 0.764 |
+| ***C. rodentium*** | *E. coli* (WT) | 0.478 | **0.628** | 0.707 |
+| *E. coli* (eSp) | ***C. rodentium*** | 0.587 | 0.656 | 0.764 |
+
+**Cross-organism transfer works, at about 90% of a locally-trained model.** The
+guide sequences are completely different and the organisms are different, so
+this is real generalisation.
+
+**And the flank features are what carry it.** They improve every direction, and
+most in the hardest one: going from *C. rodentium* to *E. coli*, the published
+features alone manage 0.478, and adding flank features recovers it to 0.628.
+The flank encoding is the part of the model that survives changing organism.
+
+A fourth pairing — *E. coli* WT to *E. coli* eSpCas9 — reaches 0.689, but those
+two screens use **the same guide library**, so the model has seen every test
+sequence before. It isolates the enzyme change cleanly and says nothing about
+unfamiliar DNA; it is not a generalisation result.
+
+**This resolves what looked like a contradiction.** The long-range gradient
+cannot be *learned* from the *C. rodentium* screen, because 229 kb contains no
+gradient to learn. But a model that learned it in *E. coli* *applies* it to
+*C. rodentium* successfully. Both statements hold, and together they say the
+limitation is in the available **data**, not in the biology — which only the
+model-transfer test could separate.
+
+### What the competition's cross-species claim actually rests on
+
+Since "they generalise across species and we do not" has been this project's
+standing concession, it is worth checking. Two things turn out to be wrong with
+how it was stated here.
+
+**It is the earlier paper's claim.** The cross-species results belong to
+crisprHAL 1 (*Nat Commun*, 2023). crisprHAL 2 — the model Part 1 benchmarks
+against — is a data-curation paper, described by its own repository as
+rebuilding two prior *E. coli* datasets.
+
+**And "three species" is doing a lot of work:**
+
+| organism | what the data actually is | guides |
+|---|---|---:|
+| *E. coli* | training and held-out test | 45,010 / 7,821 |
+| *C. rodentium* | a genuine screen in that organism | 31,796 |
+| *S. enterica* | **a 2 kb piece of one of its genes, cloned into *E. coli*** | **~300** |
+
+The *Salmonella* test is that organism's **DNA placed inside an *E. coli*
+cell** — about 300 guides across 2 kb. That tests whether the model copes with
+unfamiliar sequence, which is worth knowing, but it is not a screen in another
+organism: there is no *Salmonella* chromosome and no *Salmonella* cell. And the
+*C. rodentium* data is the same set measured above, covering 4.3% of a
+chromosome.
+
+So the fair statement is not that they have solved cross-species prediction and
+we have not. It is that **nobody has the dataset the question needs** — a
+genome-wide Cas9 screen in a bacterium other than *E. coli* — and this project
+is the one that measured why the existing substitutes cannot stand in for it.
+
+*(These figures come from the papers' abstracts and repositories rather than
+their full PDFs, and two sources disagree slightly on the* Salmonella *count.
+Check them against the PDFs before putting them in a manuscript.)*
+
 ### The mechanism: which step is the bottleneck
 
 Two numbers point the same way: GC-rich targets cut worse (−0.20), and a guide
@@ -710,12 +779,14 @@ long-range windows worth more than immediate context on a clean label,
 downstream worth 3.4× upstream, and strand-invasion rather than hybridisation
 limiting (Part 3). This is *why* a 0.3-second tree matches a GPU network.
 
-**8. The flank effect shown to be a property of DNA rather than of SpCas9** —
-+0.104 on a genome-wide screen with a different nuclease, under contiguous-arc
-CV, with the long-range-dominant *shape* reproduced too (Part 3). Paired with a
-measurement showing the one available other-organism screen covers 4.3% of a
-chromosome and therefore cannot test the species question at all — a dataset
-suitability result that saves the next person the same mistake.
+**8. The flank effect shown to be a property of DNA, and to be what makes a
+model portable between organisms.** +0.104 on a genome-wide screen with a
+different nuclease under contiguous-arc CV, with the long-range-dominant shape
+reproduced; and in cross-organism model transfer, ~90% retention in both
+directions with the flank features contributing +0.074 to +0.150 of it
+(Part 3). Paired with a measurement showing the one available other-organism
+screen covers 4.3% of a chromosome — a dataset-suitability result that applies
+equally to the published cross-species evidence.
 
 **9. Parity with the state of the art at a thousandth of the compute**, from a
 feature set whose source paper reported R² 0.249 — now confirmed against a
@@ -805,13 +876,14 @@ as the *E. coli* work means three more steps, in order:
    downstream still outweigh upstream, does the distance profile still peak at
    250–500 nt? A mechanism that holds in two organisms is a much stronger claim
    than a gain that holds in two organisms.
-3. **The true model transfer** — train on one screen, rank another's guides.
-   This is the claim a reader will assume we are making, so it should be
-   demonstrated or explicitly disclaimed. It is answerable today between the
-   two *E. coli* screens.
-4. **For the species question, find a genome-wide screen outside *E. coli*.**
-   That is a dataset search rather than an analysis, and until one exists the
-   cross-species claim should not be made at all.
+3. ~~The true model transfer~~ — **done** (Part 3): ~90% retention in both
+   directions between *E. coli* and *C. rodentium*, with the flank features
+   carrying the portability.
+4. **For the remaining species question, find a genome-wide screen outside
+   *E. coli*.** What is still unshown is whether the long-range gradient is
+   *detectable* in another organism, as opposed to transferable into one. That
+   needs a dataset nobody in this literature has, so it is a search rather than
+   an analysis.
 
 Only then:
 
@@ -843,9 +915,11 @@ compute.
 
 - **One organism for the long-range claim, two nucleases.** The flank effect
   is shown to be enzyme-independent within *E. coli* (Part 3), but the species
-  question is untested: the only other-organism screen available covers 4.3% of
-  one chromosome. crisprHAL 2 validates across *C. rodentium* and *S. enterica*,
-  which this project cannot yet match — this remains their advantage.
+  question is untested here: the only other-organism screen available covers
+  4.3% of one chromosome. The competing line of work has cross-species evidence
+  this project does not — though on inspection it is one confined screen plus a
+  2 kb cloned fragment, and it belongs to crisprHAL 1 rather than to the
+  crisprHAL 2 model benchmarked in Part 1 (see below).
 - **The +0.011 margin over crisprHAL 2 rests on one seed of their model**, with
   their hyper-parameters rather than re-tuned ones. Consistent across all five
   folds, but small; "comparable performance at a thousandth of the cost" is the
@@ -867,8 +941,8 @@ compute.
 
 ## What exists now
 
-- **31 Python modules, about 7,000 lines**, in `src/sgrna/`.
-- **51 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
+- **31 Python modules, about 7,200 lines**, in `src/sgrna/`.
+- **52 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
 - **A 41-cell notebook** running the whole pipeline locally through Colab,
   saving progress after every step.
 - **Three documents**: this report (merged with the former `NOVELTY.md` on
