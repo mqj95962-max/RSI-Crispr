@@ -1292,19 +1292,62 @@ cross-checks against an independently computed value, not better error handling.
 
 ### Next
 
-1. **Tune both models, or state the parity result.** The single highest-value
-   item. Our tuning gain (+0.0103) is the size of the whole margin, so either
-   crisprHAL 2 gets the same search — about a day of CPU — or the paper claims
-   parity and says why. *Parity is a perfectly good result; an unsupported lead
-   is not.*
-2. **Confirm the human GC relationship is U-shaped** in the human matrix we
-   already hold. Cheap, and it converts "the mechanism does not transfer" into
-   "the mechanism is replaced by a different one", which is a better sentence.
-3. **Recompute the ceiling from true replicates** if any exist, since the current
-   0.90 rests on two screens that share a library.
-4. **Find or generate a genome-wide screen in a distant bacterium.** This is the
-   one open question that analysis cannot close — and worth saying plainly that
-   it requires wet-lab work, because nobody else has the dataset either.
+The order is settled: **harden the *E. coli* methodology, finish the paper,
+then port the method to human.** Human editing is the medically important
+target, and doing *E. coli* properly is what makes starting there cheap.
+
+**Before the paper is written**
+
+1. **Tune both models, or state parity.** The single highest-value item. Our
+   tuning gain (+0.0103) is the size of the whole margin, so either crisprHAL 2
+   gets the same search — about a day of CPU — or the paper claims parity and
+   says why. *Parity is a perfectly good result; an unsupported lead is not.*
+2. **Recompute the ceiling from true replicates** if any exist. The current
+   0.90 rests on two screens that share a library, which makes it an optimistic
+   bound rather than a conservative one.
+3. **Add seeds to the single-seed arms.** The transfer, hybrid and human
+   results are seed 41 only. The conclusions are large enough to survive, but a
+   reviewer will ask.
+4. **Confirm the human GC relationship is U-shaped** in the matrix we already
+   hold. Cheap, and it upgrades "the mechanism does not transfer" to "the
+   mechanism is replaced by a different one".
+
+**Known-open, needing data nobody has**
+
+5. **The ≈+0.007 R² abundance residual** — the only genuinely unexplained
+   signal left. Needs local protein occupancy or similar.
+6. **A genome-wide screen in a distant bacterium.** The one question analysis
+   cannot close; worth saying plainly that it needs wet-lab work, because no
+   one else has the dataset either.
+
+**Then: the human phase**
+
+7. **Port the method, not the model.** Cross-kingdom prediction measures ≈0 in
+   both directions (−0.048 and −0.017), because the strand-invasion mechanism
+   that dominates in bacteria is absent in human cells. What transfers is the
+   *approach*: the redundancy test, testing a candidate cause against the
+   mediator rather than the outcome, measuring interpretability instead of
+   asserting it, and the controls that overturned two of our own results.
+8. **Open with the obvious hypothesis.** This project's central finding is that
+   DNA *outside* the 20-mer matters. There is no reason its compositional form
+   should hold in human cells — but the human analogue of "context outside the
+   target" is **chromatin accessibility and nucleosome positioning**, which is
+   known to matter and which the published human matrix does not contain. That
+   is a well-posed first question, and the whole apparatus for answering it
+   already exists. The human feature matrix is already on disk at
+   `data/raw/human_feature_matrix.csv`.
+
+### A note on tooling, deliberately parked
+
+Everything needed for a guide-design tool already exists — locate the target,
+enumerate its NGG sites, compute base and flank features, rank. The inversion
+result above says why that is the right shape for a tool and a global "optimal
+guide" is not: guides are chosen from the few valid sites inside a target gene,
+so the useful output is a ranking of real candidates with a reason attached.
+
+**It is not a priority.** The findings are the contribution, the field already
+has predictors, and a tool without the findings adds little. Noted here so the
+option is not forgotten.
 
 ### How to frame it
 
