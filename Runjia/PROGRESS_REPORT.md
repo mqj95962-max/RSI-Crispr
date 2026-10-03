@@ -335,7 +335,7 @@ detect local patterns and is the wrong instrument for "how GC-rich are the next
 500 letters"; a windowed mean computes exactly that. crisprHAL 2's architecture
 cannot express such an average directly — it must approximate it — which is a
 plausible mechanistic reason a GPU network on 33,495 rows ends up level with a
-0.3-second tree.
+cheap CPU tree.
 
 **That claim is ours.** crisprHAL 2 establishes *that* long context helps; we
 establish *what shape* the signal has, and therefore how to encode it. Their
@@ -885,7 +885,8 @@ remaining headroom localised rather than merely named (Part 7).
 **7. The shape of the flank effect** — compositional rather than motif-borne,
 long-range windows worth more than immediate context on a clean label,
 downstream worth 3.4× upstream, and strand-invasion rather than hybridisation
-limiting (Part 3). This is *why* a 0.3-second tree matches a GPU network.
+limiting (Part 3). This is *why* a tree costing minutes matches a network
+costing hours.
 
 **8. The flank effect shown to be a property of DNA, and to be what makes a
 model portable between organisms.** +0.104 on a genome-wide screen with a
@@ -896,7 +897,7 @@ directions with the flank features contributing +0.074 to +0.150 of it
 screen covers 4.3% of a chromosome — a dataset-suitability result that applies
 equally to the published cross-species evidence.
 
-**9. Parity with the state of the art at a thousandth of the compute**, from a
+**9. Parity with the state of the art at ~1/30th of the CPU training time**, from a
 feature set whose source paper reported R² 0.249 — now confirmed against a
 re-run of the competing model rather than its published number (Part 1).
 
@@ -1015,9 +1016,9 @@ own controls; an effect shown to need no sequencing data at all; the first
 measured interpretability comparison in this literature, which finds the source
 paper's own method internally inconsistent; a ceiling showing the field has
 ~0.2 ρ of headroom and where it is not; the flank effect shown to be a smooth
-gradient rather than a pattern — which is *why* a 0.3-second model keeps up;
-and, as a by-product, parity with the state of the art at a thousandth of the
-compute.
+gradient rather than a pattern — which is *why* a model this cheap keeps up;
+and, as a by-product, parity with the state of the art at about a thirtieth of
+the CPU training time.
 
 ### Honest caveats to carry into the paper
 
@@ -1030,8 +1031,8 @@ compute.
   crisprHAL 2 model benchmarked in Part 1 (see below).
 - **The +0.011 margin over crisprHAL 2 rests on one seed of their model**, with
   their hyper-parameters rather than re-tuned ones. Consistent across all five
-  folds, but small; "comparable performance at a thousandth of the cost" is the
-  defensible phrasing, not "better".
+  folds, but small; "comparable performance at roughly a thirtieth of the CPU
+  training time, at similar memory" is the defensible phrasing, not "better".
 - **Loose cross-validation flatters the chromosome-position families**, which is
   why they are reported under the strict scheme. The flank features survive it
   unchanged.
