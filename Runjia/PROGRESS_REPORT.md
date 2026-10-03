@@ -15,13 +15,11 @@ molecular biology or machine learning: every technical term is defined in
 Part 1, and each result states what it means in plain words before giving the
 number.
 
-The model built here is called **GuideGauge** throughout — provisional. The
-name says what it does rather than what we found with it: it *gauges* how well a
-candidate **guide** will cut, in a bacterial genome, from the target and its
-surroundings. (Earlier drafts called it *GuideGauge*, which named the main finding
-instead of the function — a bad habit for a tool name, since the tool should
-outlive any one result. Other candidates, if this one does not stick:
-**CasGauge**, **LociScore**, **TERRAIN**. One find-and-replace either way.)
+The model built here is called **GuideGauge** throughout — provisional. The name
+says what it does rather than what was found with it: it *gauges* how well a
+candidate **guide** will cut. A tool should outlive any one result, so naming it
+after the finding would be a mistake. Alternatives if it does not stick:
+**CasGauge**, **LociScore**, **TERRAIN**.
 
 Companion documents: `RESULTS.md` (every
 number, with the protocol for each), `FINDINGS_LOG.md`
@@ -247,7 +245,7 @@ best published competitor is one of these.
 | Noshay et al. 2023 | the paper GuideGauge inherits its features from | 0.502 (Pearson) | 40,468 |
 | **crisprHAL 2** (2026) | the best published bacterial model | **0.697** | 33,495 curated |
 | **GuideGauge** | this project | **0.707** | 33,567 curated |
-| **GuideGauge, tuned** | same, after searching its dials (§2) | **0.718** | 33,567 curated |
+| **GuideGauge, tuned** | same, after searching its dials (below) | **0.718** | 33,567 curated |
 | the apparent limit | see Part 9 | ~0.90 | — |
 
 ### The head-to-head, and an honest correction to it
@@ -313,9 +311,16 @@ GPU-trained**, so this shows their architecture needs ~74× more *CPU* time, not
 that a laptop beats a GPU. And **most of our 17 s is not the model** — 14 s of
 it is a feature-selection step whose only output is a ranking. Swapping that
 step's XGBoost for LightGBM makes the fold 6.6 s (≈190× against crisprHAL) with
-accuracy indistinguishable (+0.0008), but it has not been adopted, because every
-number in this project was produced with the current selector and changing it
-means re-running the headline arms first.
+accuracy indistinguishable (+0.0008).
+
+**That swap was tried and then reverted**, for a reason worth recording. The
+headline is fine under it — the head-to-head goes 0.7078 → 0.7092 — but the
+*baseline* moves from 0.2937/0.5278 to 0.2897/0.5251, and that baseline is this
+project's reproduction check: the line that tells a reader our harness
+reproduces the published figure exactly. Trading a verifiable anchor for ten
+seconds is a bad deal, so the default stays XGBoost and LightGBM is available as
+a setting (`config.SELECTOR`) for exploratory sweeps where the anchor does not
+matter.
 
 > **This figure has been wrong twice, so it is worth saying how.** An earlier
 > version claimed "0.3 seconds, ~25,000× faster". The 0.3 s was real but was the
@@ -393,14 +398,11 @@ agree on only **114 of them** — yet both cover **all 20 positions of the guide
 different information. They are choosing different spellings of the same twenty
 letters.
 
-Three earlier results are consequences of this, and read better together than
-apart:
-
-- sixteen kinds of model span only 0.116 — there are few independent dimensions
-  for a cleverer model to exploit;
-- quadrupling the features (300 → 1,200) changes nothing, and makes the
-  baseline slightly *worse*;
-- nothing left over correlates with the model's errors above 0.035.
+Three results reported later are consequences of this, and should be read as
+one finding rather than three: sixteen model classes span only 0.116 ρ (Part 8),
+quadrupling the feature cap changes nothing (Part 8), and nothing the model
+holds correlates with its own errors above 0.035 (Part 9). All three say there
+are few independent dimensions here to exploit.
 
 **So "6,232 features" is not a rich description.** It is an elaborate spelling
 of a 20-letter word. That is exactly why the flanking-DNA features mattered:
@@ -562,8 +564,8 @@ It bounds enzyme sensitivity, nothing more.
 ### 5. The species question is still open, and the reason is the data
 
 Both new screens are *Enterobacteriaceae* — *E. coli* and *C. rodentium* are in
-the same family. The user's instinct is right: **two species in the same family
-is a weak test of generality.** Worse:
+the same family, so **two species this close is a weak test of generality.**
+Worse:
 
 **The *C. rodentium* screen covers 4.3% of one chromosome.** Its 25,210 guides
 sit in a 229 kb span at 110 guides per kb — which is the authors' stated design
@@ -1243,8 +1245,8 @@ generalises.
 
 ## Part 11 — Where we corrected ourselves
 
-Kept visible rather than quietly edited. Nine corrections, of which three are
-from this round.
+Kept visible rather than quietly edited. Eleven corrections, of which three are
+from the most recent round.
 
 | claim | corrected to |
 |---|---|
@@ -1262,7 +1264,7 @@ from this round.
 
 ### Bugs found, and the pattern in them
 
-Seven, of which the instructive ones:
+Seven in total; the five instructive ones:
 
 1. An energy calculation used the wrong one of two similar quantities, so **zero**
    guides appeared to fall in the relevant range and the feature was a silent
