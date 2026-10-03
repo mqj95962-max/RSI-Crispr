@@ -203,14 +203,43 @@ them on their own split rather than re-tuned here, and crisprHAL 2 generalises
 across organisms and nucleases while this project is *E. coli* SpCas9 only.
 
 What makes it worth reporting is the cost. Measured end to end on the same
-machine, our five-fold run takes **about 3 minutes** against crisprHAL 2's
-**105 minutes** — roughly **36×** — and every feature it uses has a name.
+machine:
 
-An earlier version of this report said "0.3 seconds", which was wrong twice
-over: that figure counted only the final model fit and left out the feature
-selection that produces its inputs, and nothing in the project had ever
-measured it. The corrected numbers, and an honest note about how much they
-vary on a machine that swaps, are in `RESULTS.md` §14.
+| | five folds | peak memory |
+|---|---:|---:|
+| this project | **1.4 min** | 4.03 GB |
+| crisprHAL 2 | **105 min** | 4.55 GB |
+
+**About 74× less time, at about the same memory** — and every feature it uses
+has a name.
+
+Getting that number took three attempts. The first measurements of identical
+work ranged from 13 to 116 seconds, because the code let the selector take
+whatever processor cores were free and held the whole table in memory twice
+over, pushing the machine into swapping. Fixing the thread count and reading
+the table from disk on demand makes repeated runs agree to within 0.7 s.
+
+Two honest qualifications. **The saving is time, not memory**: our cost is a
+33,567 × 6,517 table carried through imputation and feature selection, theirs a
+smaller input expanded by a network over 48 training passes, and the two land
+within 1.2× of each other on peak memory. And this is **CPU against CPU on one
+machine** — crisprHAL 2 as published is GPU-trained, so the claim is that their
+architecture needs ~74× more CPU time for the same accuracy, not that we beat a
+GPU.
+
+**And most of our remaining cost is removable.** The expensive step is not the
+model — it is a throwaway XGBoost fit over all 6,517 columns, run only to rank
+them and then discarded, repeated inside every fold. Replacing it with LightGBM
+makes selection 3× faster at identical accuracy, which would take the whole run
+to **0.55 min** and the ratio to about **190×**. Not adopted yet: the current
+settings are marked "identical to the frozen baseline script", so switching them
+is a deliberate change that needs the headline results re-run first.
+
+An earlier version of this report said the model "trains in 0.3 seconds". That
+number was real — it is the final model fit, measured at 0.291 s — but it was
+quoted as the cost of *training the model*, leaving out the feature-selection
+step that picks the 300 columns the fit uses, which is about 13× more
+expensive. Full numbers in `RESULTS.md` §14 and §15a.
 
 ### What the three actually differ in
 
@@ -1051,7 +1080,7 @@ the CPU training time.
 ## What exists now
 
 - **31 Python modules, about 7,300 lines**, in `src/sgrna/`.
-- **55 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
+- **58 results files** in `results/` — every table here traces to one, and the early `superseded/` runs were deleted on 2026-10-02 once re-measured.
 - **A 41-cell notebook** running the whole pipeline locally through Colab,
   saving progress after every step.
 - **Three documents**: this report (merged with the former `NOVELTY.md` on
