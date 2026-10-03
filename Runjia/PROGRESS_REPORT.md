@@ -1082,9 +1082,31 @@ at about **√0.810 ≈ 0.90**.
 > quantity on exactly the same DNA, which is the *best case* for agreement. Two
 > genuinely independent repeats, with a different library prep and a different
 > enzyme, would likely agree **less** — making the true ceiling **lower** than
-> 0.90, not higher. The number should be read as an **optimistic upper bound**,
-> and it would be worth recomputing from true biological replicates if any are
-> published.
+> 0.90, not higher. The number should be read as an **optimistic upper bound**.
+
+**Do true replicates exist? Yes — and that changes what to do about it.** The
+source screen (Guo et al. 2018) states in its methods that *"two biological
+replicates were performed for each host strain by independent transformations"*,
+and reports their agreement as **R² > 0.78**. That is exactly the measurement
+the ceiling needs — except for one detail that makes it unusable as published:
+the agreement is reported **on sequencing read counts, not on the derived cut
+score.** Read counts are dominated by library composition, so abundant guides
+stay abundant and the two replicates agree for reasons that have nothing to do
+with cutting. It is an upper bound on an upper bound.
+
+So the ceiling cannot be recomputed from published numbers. It *can* be
+recomputed from the raw data, and the route is now concrete rather than
+hypothetical: pull the per-replicate read counts from the original BioProject,
+derive a cut score from each replicate separately, and correlate those two
+scores. That is a data-processing job on public data, not a wet-lab one.
+
+For context on the plausible range, a neighbouring bacterial screen in the same
+organism — Cui et al.'s dCas9 CRISPRi library, 85,392 guides — ships two
+measurement arms that agree at **ρ 0.71**. If a bacterial CRISPR screen's score
+reliability really were near 0.71, the ceiling would be √0.71 ≈ **0.84** rather
+than 0.90. That is a different assay under different conditions and is *not* a
+substitute, but it suggests the honest range runs **0.84–0.90, with 0.90 at the
+optimistic end** rather than being a floor.
 
 Either way, GuideGauge at 0.707–0.718 and crisprHAL 2 at 0.697 are both some way
 below it. The limit is not what either model is currently hitting.
@@ -1184,23 +1206,34 @@ mechanism, though we have not tested it ourselves:
   have no histones at all. So in human cells a large determinant of whether a
   guide works is *whether the target is accessible* — a variable that does not
   exist in our data and cannot be inferred from the sequence.
-- **The published human effect of GC is non-monotonic, not absent.** A
-  well-cited analysis found that very high *and* very low GC targets both work
-  less well, with roughly 40–60% being the useful range, and that a *linear*
-  association between GC and efficiency was not statistically significant. Our
-  +0.017 is a linear correlation, so it is consistent with a real U-shape being
-  invisible to the measure we used.
+- **The published human effect of GC is non-monotonic, not absent — and we
+  have now confirmed that in our own data** (`results/gc_shape.csv`). Fitting
+  GC and GC² against the human cut score gives a **significant curved term**
+  (F = 70.8, p < 10⁻¹⁵) with an **interior optimum at GC ≈ 0.57**, which sits at
+  the 60th percentile of human guides. The decile means trace the arc directly:
+  0.235 at GC 0.43, rising to **0.262 at GC 0.60**, falling to **0.192 at
+  GC 0.78**. The quadratic fit explains **22× more variance than the linear one**
+  (R² 0.0042 against 0.0002) — which is precisely why our linear ρ of +0.017
+  read as "no relationship".
+
+  *E. coli* has a significant curved term too (F = 64.7), but its vertex sits at
+  GC 0.294 — the **1st percentile** of its guides — so across the bulk of the
+  data the relationship is simply monotonic decline. **That is the real
+  contrast: same quantity, different shape.** In bacteria, less GC is better
+  throughout the observed range; in human cells there is a middling optimum and
+  both extremes are worse.
 - **Accessibility dominates in a way it cannot in bacteria.** The same analysis
   found targets in promoter regions — which are kept open — cut better than
   targets in intergenic regions.
 
 So the fair summary is: **in human cells, accessibility is a first-order
-determinant and target GC is at best a weak non-linear one; in bacteria, there
-are no nucleosomes and GC is a strong monotonic one.** Bacteria are not
+determinant and target GC is a weak but genuinely peaked one; in bacteria,
+there are no nucleosomes and GC is a strong monotonic one.** The mechanism is
+not merely absent in human cells — it is *replaced by one of a different
+shape*, which a linear correlation cannot see. Bacteria are not
 "chromatin-free" — they pack DNA with proteins like HU and H-NS, which is what
 our `e_nucleoid` set was about — but that packaging is not nucleosomal and does
-not occlude targets the same way. Confirming the U-shape in the human data we
-hold would be a cheap and worthwhile addition.
+not occlude targets the same way. 
 
 ---
 
