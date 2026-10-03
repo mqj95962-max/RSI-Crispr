@@ -1,0 +1,29 @@
+# Dinucleotide DNA shape / deformability scales.
+# Source: IIT Madras SBFE table of 16 DNA physico-chemical properties,
+#   https://www.iitm.ac.in/bioinfo/SBFE/physico_dna.html (retrieved 2026-10-02),
+#   itself compiled from DiProDB (Friedel et al., Nucleic Acids Res 37:D37, 2009).
+# Underlying primary scales: gel-mobility bending propensity (Brukner et al.,
+#   EMBO J 14:1812, 1995); conformational flexibility and elastic force
+#   constants from B-DNA crystal structures (Olson et al., PNAS 95:11163, 1998).
+# Sign/units are as published there; only ratios and spreads are used downstream.
+# Thermodynamic scales from the same table are deliberately excluded: duplex
+#   dH/dS/dG/Tm are already covered by features/d_mechanics.py. The
+#   nucleosome-occupancy scale is excluded as eukaryote-only.
+scale	AA	AC	AG	AT	CA	CC	CG	CT	GA	GC	GG	GT	TA	TC	TG	TT
+flex_shift	5.35	9.73	8.98	1.13	4.61	5.51	12.13	8.98	5.44	1.98	5.51	9.73	4.28	5.44	4.61	5.35
+flex_slide	13.72	9.57	7.58	11.69	1.35	7.36	4.02	7.58	10.28	4.34	7.36	9.57	7.13	10.28	1.35	13.72
+bend_major	1.18	1.06	1.06	1.12	1.06	0.99	1.02	1.04	1.08	0.98	1	1.02	1.07	1.03	1.03	1.09
+bend_minor	1.04	1.1	1.09	1.02	1.16	1.27	1.25	1.16	1.12	1.17	1.25	1.11	1.05	1.2	1.23	1.04
+stiff_rise	7.65	8.93	7.08	9.07	6.38	8.04	6.23	7.08	8.56	9.53	8.04	8.93	6.23	8.56	6.38	7.65
+stiff_roll	0.02	23	19	22	17	19	16	19	0.02	26	19	23	16	0.02	17	0.02
+stiff_shift	1.69	1.32	1.46	1.03	1.07	1.43	1.08	1.46	1.32	1.2	1.43	1.32	0.72	1.32	1.07	1.69
+stiff_slide	2.26	3.03	2.03	3.83	1.78	1.65	2	2.03	1.93	2.61	1.65	3.03	1.2	1.93	1.78	2.26
+stiff_tilt	38	38	37	36	25	42	26	37	38	36	42	38	18	38	25	38
+stiff_twist	26	36	31	33	16	26	14	31	25	25	26	36	17	25	16	26
+# Two anomalies in the source table, left as fetched here and handled in
+# features/i_shape.py so the decisions are reviewable:
+#   stiff_roll  AA/TT and GA/TC are 0.02 while every other step is 16-26.
+#               Treated as corrupt and excluded from the feature build.
+#   bend_major, bend_minor  not reverse-complement symmetric (e.g. AA 1.18 vs
+#               TT 1.09), which a duplex step property must be. Symmetrised by
+#               averaging each step with its reverse complement before use.
