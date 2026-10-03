@@ -505,7 +505,9 @@ project ships four screens, and three are usable:
 | TevSpCas9 | *C. rodentium* | TevSpCas9 | 25,210 | 0.704 | **0.764** | +0.060 |
 
 All three under the strict grouped cross-validation, all gains winning 5 of 5
-folds (p = 7×10⁻⁶ and 3×10⁻⁵ for the two new ones).
+folds (p = 7×10⁻⁶ and 3×10⁻⁵ for the two new ones), and **all three repeated at
+seeds 41, 42 and 43**: the eSpCas9 gain is +0.1040 ± 0.0003 and the
+*C. rodentium* gain +0.0587 ± 0.0015 across seeds.
 
 The fourth screen, **TevSaCas9**, was deliberately excluded. Its enzyme requires
 a different PAM (NNGRRT instead of NGG), so only 45% of its target sites have the
@@ -543,6 +545,10 @@ Read the off-diagonal against the diagonal below it: going *E. coli* →
 *C. rodentium* keeps **92%** of what a locally-trained model achieves; going
 back the other way keeps **89%**. The guides share no sequence and the organisms
 share no chromosome, so this is genuine transfer.
+
+Both figures are means over three seeds and are extremely stable —
+0.6980 ± 0.0033 and 0.6276 ± 0.0009. The two within-*E. coli* pairings retain
+87% and 86% on the same basis.
 
 **The flank features are the portable part.** Without them the same table reads
 0.626 and 0.478 — the inherited published representation transfers poorly, and
@@ -1185,7 +1191,9 @@ mismatched features.
 | **human model on *E. coli*** | **−0.017** |
 
 **Cross-kingdom transfer is useless in both directions** — very slightly worse
-than guessing. And the mechanism inverts, which is why it is negative rather
+than guessing. Over three seeds: **−0.0474 ± 0.0014** one way and
+**−0.0184 ± 0.0087** the other, against within-screen scores of 0.5294 ± 0.0024
+and 0.3979 ± 0.0057. And the mechanism inverts, which is why it is negative rather
 than merely weak:
 
 | | *E. coli* | human |
@@ -1340,9 +1348,10 @@ target, and doing *E. coli* properly is what makes starting there cheap.
 2. **Recompute the ceiling from true replicates** if any exist. The current
    0.90 rests on two screens that share a library, which makes it an optimistic
    bound rather than a conservative one.
-3. **Add seeds to the single-seed arms.** The transfer, hybrid and human
-   results are seed 41 only. The conclusions are large enough to survive, but a
-   reviewer will ask.
+3. ~~Add seeds to the single-seed arms.~~ **Done.** Every transfer, hybrid and
+   human arm now has three seeds, and **nothing moves** — the largest spread
+   anywhere is 0.009, on an arm whose value is ≈0 either way, and every
+   headline is within 0.003 of the single-seed figure (Part 4, Part 9).
 4. **Confirm the human GC relationship is U-shaped** in the matrix we already
    hold. Cheap, and it upgrades "the mechanism does not transfer" to "the
    mechanism is replaced by a different one".
