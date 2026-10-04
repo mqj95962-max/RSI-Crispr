@@ -177,7 +177,8 @@ def _append_checkpoint(tag: str | None, row: dict) -> None:
 def cross_validate(X, y, feature_names, family_of, n_features=None,
                    seeds=None, n_splits=None, verbose=True, groups=None,
                    tag: str | None = None, experiment: str = "unnamed",
-                   deadline: float | None = None) -> dict:
+                   deadline: float | None = None,
+                   champion_overrides: dict | None = None) -> dict:
     """Leakage-safe CV, resumable one fold at a time.
 
     Every fold is written to `results/folds_<tag>.csv` as soon as it finishes,
@@ -188,6 +189,11 @@ def cross_validate(X, y, feature_names, family_of, n_features=None,
     recomputing work. Pass `deadline` (an absolute time.time() value) to stop
     cleanly partway and resume later -- the partial result is still
     summarised, marked incomplete.
+
+    `champion_overrides` replaces named champion hyperparameters for this call
+    only -- used by `representation.py` to ask whether a deeper tree can
+    recover what a redundant encoding provides. It is deliberately not a config
+    setting: the frozen champion is an anchor, not a default to drift from.
     """
     import xgboost as xgb
 
@@ -230,7 +236,10 @@ def cross_validate(X, y, feature_names, family_of, n_features=None,
             top = np.argsort(gains)[::-1][:n_features]
             n_engineered = int((family_of[top] != "base").sum())
 
-            model = xgb.XGBRegressor(**champion_params(seed))
+            params = champion_params(seed)
+            if champion_overrides:
+                params.update(champion_overrides)
+            model = xgb.XGBRegressor(**params)
             model.fit(X_tr[:, top], y_tr)
             pred = model.predict(X_va[:, top])
 

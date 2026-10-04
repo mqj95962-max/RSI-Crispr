@@ -40,7 +40,9 @@ parameter table that belongs with the code. In the working folder it lives at
 | `features/` | the nine feature families, one module each (`a_flank` is the one that worked) |
 | `run_ablation.py` | the ablation harness: grouped CV, permutation controls, the selector |
 | `evaluate.py`, `importance.py`, `attribution.py` | model comparison and the interpretability measurements |
-| `diagnose.py` | the redundancy / headroom / ceiling diagnostics |
+| `diagnose.py`, `ceiling2.py` | the redundancy / headroom / ceiling diagnostics |
+| `representation.py` | how few of the 6,232 published columns the model needs (427, it turns out) |
+| `importance_models.py` | seven model families × three importance methods — why SHAP survives a change of model and split gain does not |
 | `make_diagnostic_blocks.py` | the blocks that decomposed the "supercoiling" result |
 | `headtohead.py`, `crisprhal_rerun.py` | the comparison against crisprHAL 2, including re-running their model |
 | `transfer.py` | cross-enzyme, cross-organism and hybrid experiments |
