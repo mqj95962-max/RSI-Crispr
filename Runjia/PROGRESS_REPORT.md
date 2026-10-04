@@ -234,7 +234,7 @@ sweeps.
 > is the harness check. The **head-to-head configuration** on the 33,567 curated
 > rows uses **LightGBM** as the predictor, with XGBoost still doing the column
 > selection. So ρ 0.5278 is XGBoost and ρ 0.7078 is LightGBM, and the tuning
-> gain of +0.0103 that matches the whole crisprHAL margin is a LightGBM result.
+> gain of +0.0131 that exceeds the whole crisprHAL margin is a LightGBM result.
 > The two libraries are within 0.001 of each other everywhere they have both
 > been run (Part 9), so nothing substantive turns on the choice — but a reader
 > tracking a specific number should know which one produced it.
@@ -271,7 +271,7 @@ accelerator, nothing that is not a laptop.
 | Noshay et al. 2023, their own model re-run | the paper SLICER inherits its features from | **0.479** | 13,880 |
 | crisprHAL 2 (2026) | the best published bacterial model | **0.697 ± 0.007** | 33,495 curated |
 | **SLICER** | this project | **0.707 ± 0.008** | 33,567 curated |
-| **SLICER, tuned** | after searching its settings | **0.718** | 33,567 curated |
+| **SLICER, tuned** | settings searched to convergence | **0.721** | 33,567 curated |
 | apparent ceiling | Part 10 | 0.90–0.93 | — |
 
 ### Their model, actually run
@@ -325,14 +325,14 @@ So SLICER is ahead by **+0.0107**, in 5 of 5 folds, paired p = 0.0006.
 
 **That is not a claim of superiority, because neither model was tuned.** Searching
 SLICER's own hyperparameters — inside the training folds only, so the choice never
-sees test data — gains **+0.0103 ± 0.0030** (5/5 folds, p = 0.0015). **Tuning
+sees test data — gains **+0.0131 ± 0.0016** (5/5 folds, p = 0.00005). **Tuning
 alone moves our number by as much as the entire margin.** Tuning theirs costs
 about a day of CPU and was not done.
 
 **The defensible claim is parity**: two models built on completely different
 principles landing within a hundredth of each other on identical data, with the
 difference between them no larger than the difference between tuned and untuned
-versions of either. The tuned 0.718 may be quoted as what it is — tuned against
+versions of either. The tuned 0.721 may be quoted as what it is — tuned against
 untuned.
 
 ### What they do differ in: cost
@@ -944,13 +944,33 @@ score would report the best of twelve draws on the test set, which is not a
 held-out number. Feature selection is done once per outer fold and shared across
 draws, since it is 14 s of the 17 s fold and does not depend on these settings.
 
+The search is run **to convergence rather than to a fixed count**: up to 300
+draws per fold, stopping when 80 consecutive draws fail to beat the best, with
+every draw written to `tuning_trace.csv` so the plateau can be inspected instead
+of taken on trust.
+
 | | ρ |
 |---|---:|
-| default settings | 0.7078 |
-| tuned | **0.7181** |
-| gain | **+0.0103 ± 0.0030, 5/5 folds, p = 0.0015** |
+| default settings | 0.7082 |
+| tuned | **0.7212** |
+| gain | **+0.0131 ± 0.0016, 5/5 folds, paired p = 0.00005** |
 
-Per fold: +0.0087, +0.0125, +0.0143, +0.0077, +0.0081.
+Per fold: +0.0139, +0.0111, +0.0149, +0.0117, +0.0136. And the plateau is real —
+each fold found its winner early and then searched 80 more draws for nothing:
+
+| fold | draws run | best found at draw | Δρ |
+|---:|---:|---:|---:|
+| 1 | 115 | 35 | +0.0139 |
+| 2 | 157 | 77 | +0.0111 |
+| 3 | 141 | 61 | +0.0149 |
+| 4 | 117 | 37 | +0.0117 |
+| 5 | 97 | 17 | +0.0136 |
+
+627 configurations in total. An earlier 12-draw version of this search found
++0.0103 (`tuning_trials12.csv`), so **a short search understates the tuning
+effect by about a quarter** — which matters for how the head-to-head is read,
+because the number being compared against crisprHAL's margin is the converged
+one.
 
 **More features.** The model is capped at the top 300. Raising it:
 
@@ -1232,7 +1252,7 @@ pulls the estimate the other way again. A trustworthy ceiling needs true
 replicates — the same library, the same enzyme, two independent experiments —
 which nobody has published for a bacterial Cas9 cutting screen.
 
-**SLICER at 0.707–0.718 is therefore somewhere around 80% of the way to a limit
+**SLICER at 0.707–0.721 is therefore somewhere around 80% of the way to a limit
 we can only bracket.** That is enough to say neither model is near it, and not
 enough to quote a precise remaining headroom.
 
