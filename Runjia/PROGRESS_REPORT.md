@@ -865,20 +865,10 @@ about +0.001, against +0.164 for the right feature set.** Settings are a
 rounding error next to features — which is the whole argument for spending effort
 where this project spent it.
 
-### And the model is not leaving information unused
-
-If a model were failing to exploit a feature it holds, that feature would still
-correlate with the model's remaining errors. Of 6,480 features, **none** exceeds
-0.10 (the largest is 0.035). It has squeezed its features dry, which is why model
-choice costs so little.
-
-### How a gradient-boosted tree uses features
-
-Many small decision trees in sequence. Each asks a few yes/no questions ("is
-downstream GC above 54%?"), each splitting guides into two groups whose average
-scores differ as much as possible, and each new tree is fitted to the *errors* of
-those before it. Each tree uses only a few features, and a feature that never
-produces a good split is never used.
+**And model choice costs little because there is nothing left for a better model
+to find.** Of the 6,480 columns the champion is given, not one still correlates
+with its out-of-fold errors above 0.031. Part 10 is the measurement, including
+why that test can be trusted and whether it survives the 427-column reduction.
 
 ### Which model explains itself, and what the disagreement was really about
 
@@ -991,14 +981,17 @@ collapses:
 | random forest | 16% | 24% |
 | extra trees | 46% | 47% |
 
-Default gain counts how much a split improved the fit at the moment it was made,
-which over-credits a binary column used in many shallow nodes; SHAP measures the
-effect a column has on the output. These seven models fit nearly the same
-function — they span 0.08 Spearman — so once the *function* is measured rather
-than the *fitting procedure*, they largely agree. Under SHAP all five tree models
-pick out the same two leading blocks: the quantum columns of the nearest 10
-flanking letters (≈14%) and the guide's letter-pair quantum columns (≈13%), while
-the 3,383 middle-position indicators carry ≈10% between them.
+Two things that table adds beyond the earlier one. **The artefact is largely
+XGBoost's**: CatBoost and LightGBM barely move, so this is specific to how
+XGBoost's depth-wise growth at these settings accumulates gain on binary
+columns. And **extra trees' preference is real** — 46% to 47%, unchanged under
+SHAP — so a genuine data-type preference is distinguishable from an artefactual
+one. Seven models that span only 0.08 Spearman are fitting nearly the same
+function, so once the *function* is measured rather than the *fitting
+procedure*, they largely agree: under SHAP all five tree models pick out the
+same two leading blocks, the quantum columns of the nearest 10 flanking letters
+(≈14%) and the guide's letter-pair quantum columns (≈13%), while the 3,383
+middle-position indicators carry ≈10% between them.
 
 **So the conclusion narrows rather than disappears.** "Do not read mechanism off
 an importance plot" should be "do not read it off a **gain** plot". SHAP's 0.496
@@ -1130,7 +1123,10 @@ material.
 
 **The left column is the answer: not one of 6,480 available columns retains a
 residual correlation above 0.031.** The model is not underfitting; there is
-nothing left in those columns to extract.
+nothing left in those columns to extract. (Two independent runs of this test
+exist, `headroom.csv` and `representation_headroom.csv`, and the maximum is
+0.028–0.035 depending on the arm — the figure quoted elsewhere in this report as
+"the 0.035 noise level" is the looser of the two.)
 
 **And the right column is why the test can be trusted** — it has a demonstrated
 positive control. When the flank family was held back, the test flagged it at
