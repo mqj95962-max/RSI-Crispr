@@ -45,6 +45,9 @@ parameter table that belongs with the code. In the working folder it lives at
 | `importance_models.py` | seven model families × three importance methods — why SHAP survives a change of model and split gain does not |
 | `asymmetry.py` | is the downstream flank advantage a transcription effect? (no — and half the test the data cannot support) |
 | `bench.py` | peak memory and training cost, one fresh process per repetition |
+| `faithfulness.py` | drop what the ranking points at and refit — and why that is uninterpretable on a redundant matrix |
+| `noshay_replicate.py` | the inherited paper's own iRF model, run here |
+| `crisprhal_tune.py` | a hyperparameter search for crisprHAL 2, so the head-to-head is not tuned-against-untuned |
 | `make_diagnostic_blocks.py` | the blocks that decomposed the "supercoiling" result |
 | `headtohead.py`, `crisprhal_rerun.py` | the comparison against crisprHAL 2, including re-running their model |
 | `transfer.py` | cross-enzyme, cross-organism and hybrid experiments |
@@ -67,6 +70,13 @@ used, and switching to `"lightgbm"` — which is 3× faster and ranks just as we
 — moves the baseline off the published 0.2937 / 0.5278 figure the project
 reproduces as a harness check. Fast sweeps can use it; headline numbers should
 not.
+
+**Two configurations, two libraries.** The baseline on the 13,880 published rows
+uses **XGBoost** as predictor, because that is what reproduces Noshay et al.'s
+figure and anchors the harness. The curated head-to-head on 33,567 rows uses
+**LightGBM** as predictor with XGBoost still selecting columns. They agree to
+within 0.001 wherever both were run, but a number quoted from one is not a number
+from the other: ρ 0.5278 is XGBoost, ρ 0.7078 is LightGBM.
 
 **Grouped cross-validation is not optional for positional features.** The
 screen puts ~20 guides in every gene, so plain `KFold` lets a model score well

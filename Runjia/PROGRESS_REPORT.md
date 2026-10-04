@@ -20,7 +20,7 @@ statement rather than a diary. `FINDINGS_LOG.md` is the chronological record and
 - [Part 0 — Why this problem is worth working on](#part-0--why-this-problem-is-worth-working-on)
 - [Part 1 — Six things about this problem that are easy to get wrong](#part-1--six-things-about-this-problem-that-are-easy-to-get-wrong)
 - [Part 2 — What the headline number does and does not mean](#part-2--what-the-headline-number-does-and-does-not-mean)
-- [Part 3 — Where SLICER stands](#part-3--where-slicer-stands)
+- [Part 3 — What SLICER is, and where it stands](#part-3--what-slicer-is-and-where-it-stands)
 - [Part 4 — What made it possible: decoding the published dataset](#part-4--what-made-it-possible-decoding-the-published-dataset)
 - [Part 5 — The one large effect, and what kind of thing it is](#part-5--the-one-large-effect-and-what-kind-of-thing-it-is)
 - [Part 6 — The rule: when a feature cannot help](#part-6--the-rule-when-a-feature-cannot-help)
@@ -138,8 +138,7 @@ the best one. But **ratios of Δρ are not ratios of information.** On the ρ²
 scale, 0.53 → 0.61 is worth +0.09 while 0.82 → 0.90 is worth +0.18: the same Δρ
 is worth twice as much higher up. So when this report says the flank features
 extract 4.2× what a CNN gets from the same DNA, that compares two measurements
-taken **at the same baseline** and does not generalise to other baselines. We
-stated it as though it did, once.
+taken **at the same baseline** and does not generalise to other baselines.
 
 ### What ρ buys on the decision a practitioner actually makes
 
@@ -195,15 +194,120 @@ because an effect the same size is available from tuning either model.
 
 ---
 
-## Part 3 — Where SLICER stands
+## Part 3 — What SLICER is, and where it stands
+
+### The architecture, and why each piece is what it is
+
+Five stages, and every one of them is a choice that was tested rather than
+inherited.
+
+**1. Input — named columns describing the guide and its surroundings.** The
+6,232 published columns (Part 4 shows these are a re-spelling of the guide's 20
+letters) plus 348 columns describing the flanking DNA in windows of 50 to 1,000
+letters. 6,580 columns on the original screen, 6,517 on the curated one. *Why
+named features rather than raw sequence:* Part 5 shows the signal is a smooth
+compositional gradient, and a windowed mean computes a gradient exactly where a
+pattern detector has to approximate it — on the same DNA, hand-computed windows
+are worth 4.2× what a convolutional network extracts.
+
+**2. Imputation — column medians, from the training fold only.** Mundane but
+load-bearing: medians taken over all rows would leak the validation fold's
+distribution into training.
+
+**3. Feature selection — rank by importance, keep the top 300.** *Why select at
+all:* most columns are restatements, and a tree spends its depth budget on
+whatever is offered. *Why 300:* raising the cap to 1,200 is worth +0.001. *Why
+XGBoost's gain to do the ranking,* when LightGBM ranks as well 5× faster: this
+is the one place the project prefers continuity over speed, because these are
+the settings under which the published 0.2937 / 0.5278 baseline reproduces, and
+that reproduction is the check that tells a reader the harness is faithful. The
+fast alternative is one config setting away (`config.SELECTOR`) and is used for
+sweeps.
+
+**4. The model — gradient-boosted trees: 400 of them, depth 4, learning rate
+0.05, 80% row and column subsampling.**
+
+> **Which library, and why there are two answers.** This matters for reading the
+> rest of the report, so it is stated once here. The **baseline configuration**
+> on the 13,880 published rows uses **XGBoost**, because those are the settings
+> under which Noshay et al.'s published figure reproduces, and that reproduction
+> is the harness check. The **head-to-head configuration** on the 33,567 curated
+> rows uses **LightGBM** as the predictor, with XGBoost still doing the column
+> selection. So ρ 0.5278 is XGBoost and ρ 0.7078 is LightGBM, and the tuning
+> gain of +0.0103 that matches the whole crisprHAL margin is a LightGBM result.
+> The two libraries are within 0.001 of each other everywhere they have both
+> been run (Part 9), so nothing substantive turns on the choice — but a reader
+> tracking a specific number should know which one produced it.
+
+*Why boosting:* of sixteen model classes
+on identical data the whole field spans 0.116 ρ, and boosting is at the top of
+it. Two of the failures are informative rather than embarrassing — a plain ridge
+regression gets within 0.03, so **the effects mostly add up rather than
+interacting**, and nearest-neighbours fails outright, so guides with similar
+features do *not* have similar scores. That combination is the signature of many
+small independent effects, which is what boosting with shallow trees is for.
+*Why depth 4:* deeper is monotonically worse at every representation tested
+(Part 4).
+
+**5. Evaluation — five-fold cross-validation, grouped wherever a feature is
+positional.** The screen puts ~20 guides in every gene, so plain `KFold` lets a
+model score well by recognising a locus rather than reading a guide.
+
+**What is deliberately absent.** The default configuration is *not* tuned —
+tuning is worth +0.010 and is reported separately, because the untuned
+configuration is the one that anchors to the published baseline. The matrix is
+*not* stored in its reduced 427-column form, which would cut memory 5× (Part 4),
+for the same reason. Both are available; neither is the default while the anchor
+is worth more than the saving.
+
+**Cost, so the shape of the thing is clear:** one fold is 17 s of CPU and 3.3 GB,
+of which 12 s is the selection step whose only output is a ranking. No GPU, no
+accelerator, nothing that is not a laptop.
+
+### Where it stands
 
 | | what it is | Spearman ρ | guides |
 |---|---|---:|---|
-| Noshay et al. 2023 | the paper SLICER inherits its features from | 0.502 (Pearson) | 40,468 |
+| Noshay et al. 2023, their own model re-run | the paper SLICER inherits its features from | **0.479** | 13,880 |
 | crisprHAL 2 (2026) | the best published bacterial model | **0.697 ± 0.007** | 33,495 curated |
 | **SLICER** | this project | **0.707 ± 0.008** | 33,567 curated |
 | **SLICER, tuned** | after searching its settings | **0.718** | 33,567 curated |
 | apparent ceiling | Part 10 | 0.90–0.93 | — |
+
+### Their model, actually run
+
+The first row used to be a Pearson correlation copied from their Table 1, which
+is not comparable with the rest of the column. Their model has now been
+reimplemented from the methods section and run here — iterative Random Forest,
+1,000 trees per forest, ten iterations, five-fold cross-validation on the full
+6,232-column matrix (`src/sgrna/noshay_replicate.py`):
+
+| | Pearson | R² | Spearman |
+|---|---:|---:|---:|
+| their Table 1 | 0.5019 | 0.2491 | not reported |
+| **our run of their algorithm** | **0.4881 ± 0.0119** | **0.2345 ± 0.0102** | **0.4785** |
+
+**Within 0.014 Pearson of their published figure on a third of their rows** —
+their Table 1 used 40,468 sgRNAs, and the supplementary matrix they released
+covers 13,880, so some shortfall was expected. That is close enough to treat the
+reimplementation as faithful, and it supplies the Spearman their paper never
+reported, which is what makes the comparison column above honest.
+
+**The like-for-like model comparison this allows is the useful part.** On the
+*same* 13,880 rows, the *same* 6,232 columns and the same folds, their iRF
+reaches ρ 0.479 and our gradient-boosted baseline reaches **0.527** — so
+**+0.049 from changing the model alone**, before any new feature does anything.
+The flank family then adds +0.080 on top. Worth stating in that order, because it
+separates what we contributed from what a more modern learner contributes for
+free. (One asymmetry: iRF uses all 6,232 columns by design, where our pipeline
+selects 300. That is part of what is being compared, not a confound to remove.)
+
+**And the cost gap is the same story as crisprHAL's.** Their iRF takes **6.2 min
+per fold** on ten cores against our 17 s, at 2.2 GB against 3.3 GB — 22× the
+time for 0.049 less ρ. Their paper ran on Oak Ridge's CADES cluster; the point is
+not that they were wasteful but that the iterative reweighting buys nothing here,
+which is consistent with Part 4: there is no deep interaction structure to
+amplify, because the matrix is a re-spelling of 20 letters.
 
 ### The head-to-head, and why it is parity
 
@@ -272,12 +376,11 @@ light on RAM.
 > full-matrix form is what the reproduction check above anchors to; available if
 > footprint ever becomes the binding constraint.
 >
-> One number here has been wrong twice and the reason is the same both times. An
-> earlier version of this table reported 4.03 GB, taken from a single process
-> that ran both selectors — `ru_maxrss` is a high-water mark, so that figure
-> belonged to neither. A second version ranked the selectors from one measurement
-> each. **Peak memory needs separate processes and repetitions, exactly as timing
-> does.**
+> **Protocol, because it decides the answer:** peak memory must be measured one
+> configuration per process, repeated. `ru_maxrss` is a high-water mark that
+> never falls, so two arms sharing a process share a number; and run-to-run
+> spread for one arm here is ~0.3 GB, wider than most differences worth
+> reporting.
 
 Two caveats. **crisprHAL 2 as published is GPU-trained**, so this shows their
 architecture needs ~74× more *CPU* time, not that a laptop beats a GPU. And
@@ -887,8 +990,14 @@ clearly:
 carrying half the importance. XGBoost's bad row was the measurement, not the
 model — and fixing the measurement is worth far more than swapping the model
 (XGBoost's own stability goes 0.49 → 0.75 and its load-bearing columns 330 → 44
-without anything about the fit changing). That is why the champion stays
-XGBoost, which the reproduction check in Part 3 wants anyway.
+without anything about the fit changing).
+
+So **interpretability no longer argues for either library**, which settles the
+question the other way round from how it was posed: the baseline configuration
+keeps XGBoost because that is what reproduces the published figure (Part 3), and
+the head-to-head configuration keeps LightGBM because that is what every number
+in it was produced with. Neither choice is now defended on explanation quality,
+and neither needs to be.
 
 The rest of this section is about what the original −0.02 meant, because the
 answer is a result in its own right.
@@ -942,11 +1051,63 @@ is spread thinly across many interchangeable columns — XGBoost's situation
 exactly (330 columns, mostly binary slivers) against LightGBM's (151, continuous,
 individually harder to replace).
 
-**The decisive check says neither has found the true features.** Dropping each
-model's top 20 and refitting costs barely more than dropping 20 at random (+0.008
-and +0.003). **Method agreement measures how concentrated and irreplaceable an
-attribution is, not whether it is right.** LightGBM's ranking is *reproducible*,
-which is the reason to use it; reproducible is not correct.
+### The check that looked decisive, and what it was actually measuring
+
+The obvious test of whether a ranking means anything is to remove what it points
+at and see whether the model suffers. Done on the full matrix, it says no:
+dropping each model's top 20 columns and refitting costs **−0.0024**, against
+**+0.0015** for dropping 20 at random — indistinguishable. For a long time this
+report drew the strong conclusion from that, namely that neither model had found
+"the true features".
+
+**That conclusion was wrong, and the reason is the subject of Part 4.** With
+6,232 columns of restatement available, removing the 20 columns a model leaned on
+leaves many other ways to say the same thing. The test cannot tell an unfaithful
+ranking apart from a redundant matrix. Separating them needs a representation
+where columns are *not* interchangeable — which Part 4 now provides. Re-run on
+the 775-column reduced set (`faithfulness_groups*.csv`, 3 folds, both boosters,
+SHAP-ranked):
+
+| columns dropped and refitted | full, 6,580 cols | reduced, 775 cols |
+|---|---:|---:|
+| top 20 | −0.0024 | **−0.0150** |
+| 20 at random | +0.0015 | −0.0006 |
+| top 50 | −0.0102 | **−0.0453** |
+| 50 at random | −0.0008 | −0.0015 |
+| top 100 | −0.0226 | **−0.0816** |
+| 100 at random | +0.0016 | −0.0054 |
+
+**On a representation without restatement, the ranking is load-bearing.** The
+random control sits at ≈0 in both, so the top-versus-random gap is the statistic,
+and it is 3–6× larger on the reduced set.
+
+**Normalising matters here, and the obvious normalisation is the wrong one.**
+Twenty columns is 0.3% of the full matrix and 2.6% of the reduced one, so a
+column-count comparison looks unfair. But matching on column *fraction* is worse,
+not better: dropping the top 170 of 6,580 — the same 2.6% — costs **−0.027**
+against +0.001 at random, but it removes **80% of the model's attributed
+importance** rather than 35%, which is a far larger ask than 20 of 775. The
+right normalisation is the share of importance removed, and on that scale the two
+are closely matched (`faithfulness_shap_share.csv`):
+
+| | share of SHAP in the top 20 | top 50 | top 100 |
+|---|---:|---:|---:|
+| full, 6,580 columns | 34.6% | 53.1% | 68.6% |
+| reduced, 775 columns | 37.5% | 57.5% | 73.8% |
+
+So at an almost identical share of attributed importance removed, the full matrix
+loses 0.002 and the reduced one 0.015. **Same ranking, same share of the
+explanation taken away, six times the damage — because in one case the
+information is still reachable elsewhere and in the other it is not.**
+
+Two things follow. **Faithfulness cannot be measured on a redundant
+representation**; a "the top features don't matter" result there is a statement
+about the matrix, not about the ranking. And **the rehabilitated reading of
+method agreement** is narrower than before: it measures how concentrated and
+individually irreplaceable an attribution is, which on this matrix is mostly a
+property of the encoding. It still does not measure whether an attribution is
+*biologically* right — for that, the three kinds of evidence below are what the
+claims rest on.
 
 ### Does this generalise beyond two boosting libraries? Partly — and SHAP changes the answer
 
@@ -1123,10 +1284,10 @@ material.
 
 **The left column is the answer: not one of 6,480 available columns retains a
 residual correlation above 0.031.** The model is not underfitting; there is
-nothing left in those columns to extract. (Two independent runs of this test
-exist, `headroom.csv` and `representation_headroom.csv`, and the maximum is
-0.028–0.035 depending on the arm — the figure quoted elsewhere in this report as
-"the 0.035 noise level" is the looser of the two.)
+nothing left in those columns to extract. (Two independent runs of this
+test are on file, `headroom.csv` and `representation_headroom.csv`; the maximum
+is 0.028–0.035 depending on which arm is held back, and elsewhere this report
+quotes the looser bound, 0.035.)
 
 **And the right column is why the test can be trusted** — it has a demonstrated
 positive control. When the flank family was held back, the test flagged it at
@@ -1256,17 +1417,23 @@ rule explaining why in a way that generalises.
    largely goes away (ρ 0.50 per column, 0.80 per block), which both identifies
    the artefact and supplies the method that avoids it. The consequence for the
    inherited paper stands: its biological claim was read off a gain ranking.
-5. **The published feature set reduced to 7% of its columns** — 427 of 6,232 are
+5. **A faithfulness probe shown to be uninterpretable on a redundant matrix**
+   — the standard "drop the top features and refit" test returns ≈0 on the full
+   matrix for every model, and −0.015 against −0.001 at random once the
+   restatement is removed, at a matched share of attributed importance. It is a
+   measurement artefact that this project itself reported as a finding for
+   several weeks.
+6. **The published feature set reduced to 7% of its columns** — 427 of 6,232 are
    statistically indistinguishable from all of them, and the matrix decomposes
    into sequence, non-sequence and restatement. This is the redundancy argument
    turned from an interpretation into a measurement.
-6. **The flank effect characterised** — a gradient rather than a motif, peaking at
+7. **The flank effect characterised** — a gradient rather than a motif, peaking at
    250–500 letters, downstream-weighted, transferring across enzyme and organism
    at ~90% and across kingdoms at 0%.
-7. **The ceiling argument tested rather than assumed**, and found to rest on a
+8. **The ceiling argument tested rather than assumed**, and found to rest on a
    false independence assumption — with the systematic difference between two
    Cas9 variants quantified as a by-product.
-8. **Measured boundaries**: where the method stops, what the data cannot answer,
+9. **Measured boundaries**: where the method stops, what the data cannot answer,
    and why.
 
 ### Open

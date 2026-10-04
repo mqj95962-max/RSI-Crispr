@@ -51,6 +51,7 @@ from sklearn.metrics import r2_score
 from . import config
 
 RESULTS_PATH = config.RESULTS / "tuning.csv"
+TRACE_PATH = config.RESULTS / "tuning_trace.csv"
 
 # The settings every number in this project so far was produced with.
 DEFAULT = dict(
@@ -85,9 +86,16 @@ def _fit_score(params: dict, X_tr, y_tr, X_va, y_va, seed: int):
 
 
 def run(arm: str = "curated_flank", seed: int = 41, n_splits: int = 5,
-        trials: int = 12, inner_frac: float = 0.2,
+        trials: int = 12, inner_frac: float = 0.2, patience: int | None = None,
         deadline: float | None = None, verbose: bool = True) -> pd.DataFrame:
-    """Default settings vs a tuned-inside-the-fold search, same folds."""
+    """Default settings vs a tuned-inside-the-fold search, same folds.
+
+    `trials` is now a ceiling rather than a target. With `patience`, a fold's
+    search stops once the best inner score has not improved for that many
+    consecutive draws, and every draw is written to `tuning_trace.csv` so the
+    plateau can be shown rather than asserted -- "we searched until it stopped
+    improving" is a claim about a curve, and the curve should be on file.
+    """
     import xgboost as xgb
     from sklearn.model_selection import KFold
 
@@ -130,22 +138,44 @@ def run(arm: str = "curated_flank", seed: int = 41, n_splits: int = 5,
         itr, iva = next(iter(inner.split(A)))
 
         rng = np.random.default_rng(seed * 1000 + fold)
-        best, best_params, searched = -np.inf, None, []
+        best, best_params, trace = -np.inf, None, []
+        since_improved = 0
         t1 = time.time()
         for t in range(trials):
             params = sample_config(rng)
             rho_inner, _, _ = _fit_score(params, A[itr], y_tr[itr],
                                          A[iva], y_tr[iva], seed)
-            searched.append(dict(params=params, inner_rho=rho_inner))
             if rho_inner > best:
-                best, best_params = rho_inner, params
+                best, best_params, since_improved = rho_inner, params, 0
+            else:
+                since_improved += 1
+            trace.append(dict(arm=arm, seed=seed, fold=fold, trial=t + 1,
+                              inner_rho=rho_inner, best_so_far=best,
+                              trials_since_improved=since_improved))
+            if patience and since_improved >= patience:
+                if verbose:
+                    print(f"      fold {fold}: no improvement in {patience} "
+                          f"draws, stopping at {t + 1}", flush=True)
+                break
+            if deadline and time.time() > deadline:
+                if verbose:
+                    print(f"      fold {fold}: time budget reached at draw "
+                          f"{t + 1}", flush=True)
+                break
         search_s = time.time() - t1
+        tdf = pd.DataFrame(trace)
+        if TRACE_PATH.exists() and TRACE_PATH.stat().st_size:
+            old = pd.read_csv(TRACE_PATH)
+            old = old[~((old["arm"] == arm) & (old["fold"] == fold))]
+            tdf = pd.concat([old, tdf], ignore_index=True)
+        tdf.to_csv(TRACE_PATH, index=False)
 
         rho_def, r2_def, _ = _fit_score(DEFAULT, A, y_tr, B, y_va, seed)
         rho_tun, r2_tun, _ = _fit_score(best_params, A, y_tr, B, y_va, seed)
 
         row = dict(
-            arm=arm, seed=seed, fold=fold, trials=trials,
+            arm=arm, seed=seed, fold=fold, trials=len(trace),
+            trials_allowed=trials,
             rho_default=rho_def, r2_default=r2_def,
             rho_tuned=rho_tun, r2_tuned=r2_tun,
             delta_rho=rho_tun - rho_def,
@@ -188,7 +218,11 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--run", action="store_true")
     ap.add_argument("--arm", default="curated_flank")
-    ap.add_argument("--trials", type=int, default=12)
+    ap.add_argument("--trials", type=int, default=12,
+                    help="ceiling on draws per fold")
+    ap.add_argument("--patience", type=int, default=None,
+                    help="stop a fold's search after this many draws with no "
+                         "improvement")
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--seed", type=int, default=41)
     ap.add_argument("--time-budget", type=float, default=None)
@@ -197,7 +231,7 @@ def main(argv=None) -> int:
     deadline = time.time() + args.time_budget if args.time_budget else None
     if args.run:
         run(arm=args.arm, seed=args.seed, n_splits=args.folds,
-            trials=args.trials, deadline=deadline)
+            trials=args.trials, patience=args.patience, deadline=deadline)
     print(summary().to_string(index=False))
     return 0
 
