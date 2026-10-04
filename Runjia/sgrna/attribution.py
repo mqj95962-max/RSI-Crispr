@@ -42,6 +42,14 @@ OUT = config.RESULTS / "attribution.csv"
 OUT_SUMMARY = config.RESULTS / "attribution_summary.csv"
 
 
+def _paths(importance: str):
+    """Keep the gain-based figures on disk beside the SHAP ones."""
+    if importance == "native":
+        return OUT, OUT_SUMMARY
+    return (config.RESULTS / f"attribution_{importance}.csv",
+            config.RESULTS / f"attribution_summary_{importance}.csv")
+
+
 def _kind(name: str) -> str:
     """What quantity does this column describe? Coarse, hypothesis-level."""
     n = name
@@ -58,13 +66,18 @@ def _kind(name: str) -> str:
 
 
 def run(families=("a_flank",), seed: int = 41, n_features: int = 300,
-        top: int = 50, verbose: bool = True) -> pd.DataFrame:
+        top: int = 50, verbose: bool = True,
+        importance: str = "shap") -> pd.DataFrame:
     import lightgbm as lgb
     import xgboost as xgb
     from sklearn.model_selection import KFold
 
     from .build_matrix import load_dataset
+    from .importance import shap_importance
     from .run_ablation import _impute, champion_params
+
+    if importance not in ("native", "shap"):
+        raise ValueError(f"unknown importance {importance!r}")
 
     X, y, names, _, _ = load_dataset(list(families), verbose=verbose)
     names = np.asarray(names)
@@ -86,7 +99,13 @@ def run(families=("a_flank",), seed: int = 41, n_features: int = 300,
                                     subsample_freq=1, colsample_bytree=0.8,
                                     random_state=seed, n_jobs=-1, verbose=-1)
         sel.fit(X_tr, y_tr)
-        imp = np.asarray(sel.feature_importances_, dtype=float)
+        if importance == "shap":
+            imp = shap_importance(sel, X_va, seed=seed)
+            if imp is None:
+                raise RuntimeError("shap is not installed; pass "
+                                   "importance='native' for the old figures")
+        else:
+            imp = np.asarray(sel.feature_importances_, dtype=float)
         order = np.argsort(imp)[::-1][:n_features]
 
         if tag == "xgboost":
@@ -136,8 +155,9 @@ def run(families=("a_flank",), seed: int = 41, n_features: int = 300,
                          kind=_kind(names[j]),
                          closest_in_other_set=names[b[k]],
                          abs_corr=float(_corr_matrix(np.array([j]), b)[0][k])))
+    out, out_summary = _paths(importance)
     df = pd.DataFrame(rows)
-    df.to_csv(OUT, index=False)
+    df.to_csv(out, index=False)
 
     # --- test 3: importance share by kind of feature
     share = {}
@@ -156,13 +176,13 @@ def run(families=("a_flank",), seed: int = 41, n_features: int = 300,
         "lightgbm_share": [round(share["lightgbm"].get(k, 0.0), 4) for k in kinds],
     })
     sh["difference"] = (sh["xgboost_share"] - sh["lightgbm_share"]).round(4)
-    sh.to_csv(OUT_SUMMARY, index=False)
+    sh.to_csv(out_summary, index=False)
 
     if verbose:
         print()
         print(f"  top-{top} columns shared between the two models: "
               f"{len(shared)} / {top}")
-        print(f"  rank correlation of the two gain rankings, all columns: "
+        print(f"  rank correlation of the two {importance} rankings, all columns: "
               f"{spearmanr(fits['xgboost']['imp'], fits['lightgbm']['imp']).statistic:+.3f}")
         print()
         print("  for columns only one model picked, |correlation| with its "
@@ -183,8 +203,9 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--top", type=int, default=50)
     ap.add_argument("--seed", type=int, default=41)
+    ap.add_argument("--importance", choices=["native", "shap"], default="shap")
     args = ap.parse_args(argv)
-    run(top=args.top, seed=args.seed)
+    run(top=args.top, seed=args.seed, importance=args.importance)
     return 0
 
 

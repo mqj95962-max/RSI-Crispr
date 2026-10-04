@@ -43,6 +43,8 @@ parameter table that belongs with the code. In the working folder it lives at
 | `diagnose.py`, `ceiling2.py` | the redundancy / headroom / ceiling diagnostics |
 | `representation.py` | how few of the 6,232 published columns the model needs (427, it turns out) |
 | `importance_models.py` | seven model families × three importance methods — why SHAP survives a change of model and split gain does not |
+| `asymmetry.py` | is the downstream flank advantage a transcription effect? (no — and half the test the data cannot support) |
+| `bench.py` | peak memory and training cost, one fresh process per repetition |
 | `make_diagnostic_blocks.py` | the blocks that decomposed the "supercoiling" result |
 | `headtohead.py`, `crisprhal_rerun.py` | the comparison against crisprHAL 2, including re-running their model |
 | `transfer.py` | cross-enzyme, cross-organism and hybrid experiments |
@@ -50,6 +52,14 @@ parameter table that belongs with the code. In the working folder it lives at
 | `notebook.py` | thin wrappers so the Colab notebook stays short |
 
 ## Two settings worth knowing before changing anything
+
+**Importance is reported from SHAP, not split gain.** `importance.shap_importance`
+is what `attribution.py`, `evaluate.py` and `importance_models.py` all call, and
+both of the latter take `--importance native` if you want the historical
+gain-based figures. This is not a stylistic choice: across seven model families
+gain agrees at ρ 0.05 per column against SHAP's 0.50, and gain additionally
+credits a column for being binary — worth 26 percentage points of XGBoost's
+attribution. Do not put a gain plot in a paper from this repo.
 
 **`config.SELECTOR`** picks the model that ranks columns before the champion is
 fitted. It defaults to `"xgboost"` because that is what the frozen baseline

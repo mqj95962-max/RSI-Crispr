@@ -100,6 +100,43 @@ def block_of(name: str) -> str:
     return "published hand-named"
 
 
+def shap_importance(model, X, n_rows: int = 1000, seed: int = 0,
+                    linear_std: np.ndarray | None = None) -> np.ndarray | None:
+    """Mean |SHAP value| per column: the importance this project now reports.
+
+    Measured against gain (`importance_models.py`), SHAP agrees across seven
+    model families at rho 0.50 per column and 0.80 per block where gain agrees
+    at 0.05, and it removes a 26-percentage-point artefact from XGBoost's
+    attribution -- gain over-credits a binary column used in many shallow
+    nodes, because it counts fit improvement at split time rather than effect
+    on the output. Everything in the docs that reports where importance goes is
+    generated through here.
+
+    TreeSHAP for tree ensembles, on a subsample of `n_rows` (exact SHAP is
+    linear in rows, so the subsample is for cost, not approximation of the
+    method). For a linear model the Shapley value of column j is
+    coef_j * (x_j - mean_j), so mean |SHAP| is |coef_j| * mean|x_j - mean_j| --
+    proportional to the standardised coefficient and computable without the
+    `shap` package; pass the training column standard deviations as
+    `linear_std`. Returns None for a model that is neither.
+    """
+    rng = np.random.default_rng(seed)
+    if linear_std is not None and hasattr(model, "coef_"):
+        coef = np.abs(np.asarray(model.coef_, dtype=float)).ravel()
+        return coef * np.asarray(linear_std, dtype=float)
+    try:
+        import shap
+    except ImportError:
+        return None
+    idx = rng.choice(X.shape[0], size=min(n_rows, X.shape[0]), replace=False)
+    try:
+        ex = shap.TreeExplainer(model)
+        phi = ex.shap_values(X[idx], check_additivity=False)
+    except Exception:
+        return None
+    return np.abs(np.asarray(phi, dtype=float)).mean(axis=0)
+
+
 def kuncheva(a: set, b: set, n_total: int) -> float:
     """Overlap of two equal-size selections, corrected for chance."""
     k = len(a)

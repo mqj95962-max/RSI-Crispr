@@ -265,17 +265,126 @@ def run_residual(seeds=None, n_splits=None, verbose=True):
 
 
 
+def run_headroom(seeds=(41,), n_splits: int = 5, with_flank: bool = True,
+                 verbose: bool = True):
+    """Does the 427-column subset leave information on the table?
+
+    The argument that the full matrix is exhausted is a residual test
+    (`diagnose.headroom`): fit the champion, take its out-of-fold residuals,
+    and correlate every column against them. Nothing above |rho| 0.035 means
+    there is no column the model was given and failed to use -- it is out of
+    material rather than underfitting.
+
+    Dropping 5,805 columns makes that argument again, and it is not the same
+    argument. Those columns are functions of the 20-mer, but the subset only
+    carries the *first and second order* of it: a trimer or tetramer indicator
+    could in principle track something a mono+di representation cannot express.
+    If it did, the subset would be leaving information unused even though its
+    headline rho matches. So the test is run on the subset's own residuals,
+    with every dropped column scored against them.
+
+    Arms: the 427-column subset, and the same plus family A, each compared
+    against the full matrix on the identical folds.
+    """
+    from scipy.stats import spearmanr
+    from sklearn.model_selection import KFold
+    import xgboost as xgb
+
+    from .build_matrix import load_dataset
+    from .run_ablation import _impute, champion_params, make_selector
+
+    families = ["a_flank"] if with_flank else []
+    X, y, names, _, family_of = load_dataset(families, verbose=verbose)
+    names = np.asarray(names)
+    family_of = np.asarray(family_of)
+    base = np.where(family_of == "base")[0]
+    flank = np.where(family_of != "base")[0]
+    sets = column_sets([names[i] for i in base])
+    subset = np.sort(np.concatenate([base[sets["mono_di_364"]],
+                                     base[sets["hand_named_only"]]]))
+
+    arms = {"subset_427": subset, "published_full": base}
+    if with_flank and len(flank):
+        arms["subset_427+a_flank"] = np.sort(np.concatenate([subset, flank]))
+        arms["published_full+a_flank"] = np.arange(X.shape[1])
+
+    rows = []
+    seed = seeds[0]
+    for arm, cols in arms.items():
+        used = np.zeros(X.shape[1], bool)
+        used[cols] = True
+        pred = np.empty_like(y)
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        for fold, (tr, va) in enumerate(kf.split(X), start=1):
+            X_tr, X_va = _impute(X[tr][:, cols], X[va][:, cols])
+            sel = make_selector(seed)
+            sel.fit(X_tr, y[tr])
+            top = np.argsort(sel.feature_importances_)[::-1][:min(config.N_FEATURES,
+                                                                  len(cols))]
+            model = xgb.XGBRegressor(**champion_params(seed))
+            model.fit(X_tr[:, top], y[tr])
+            pred[va] = model.predict(X_va[:, top])
+        resid = y - pred
+        rho_oof = float(spearmanr(y, pred).statistic)
+        if verbose:
+            print(f"\n== {arm}: {len(cols):,} columns, out-of-fold rho "
+                  f"{rho_oof:.4f} ==", flush=True)
+
+        Xf = np.where(np.isfinite(X), X, np.nan)
+        best = {}
+        for j in range(X.shape[1]):
+            v = Xf[:, j]
+            ok = np.isfinite(v)
+            if ok.sum() < 200 or np.nanstd(v[ok]) == 0:
+                continue
+            r = spearmanr(v[ok], resid[ok]).statistic
+            if not np.isfinite(r):
+                continue
+            group = ("given to the model" if used[j]
+                     else "dropped from the matrix")
+            rows.append(dict(arm=arm, column=names[j], group=group,
+                             rho_with_residual=float(r)))
+            best[group] = max(best.get(group, 0.0), abs(float(r)))
+        rows.append(dict(arm=arm, column="__oof_rho__", group="summary",
+                         rho_with_residual=rho_oof))
+        pd.DataFrame(rows).to_csv(config.RESULTS / "representation_headroom.csv",
+                                  index=False)
+        if verbose:
+            for g, v in sorted(best.items()):
+                print(f"   max |rho| with residual, {g:26s} {v:.3f}", flush=True)
+    return pd.DataFrame(rows)
+
+
+def summary_headroom():
+    d = pd.read_csv(config.RESULTS / "representation_headroom.csv")
+    oof = d[d["group"] == "summary"].set_index("arm")["rho_with_residual"]
+    d = d[d["group"] != "summary"].copy()
+    d["abs"] = d["rho_with_residual"].abs()
+    t = d.groupby(["arm", "group"])["abs"].agg(["max", "count",
+                                               lambda s: (s > 0.10).sum()])
+    t.columns = ["max_abs_rho", "n_columns", "n_above_0.10"]
+    t["out_of_fold_rho"] = [oof.get(a) for a, _ in t.index]
+    print(t.round(4).to_string())
+    return t
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--run", action="store_true")
     ap.add_argument("--seeds", type=int, nargs="*")
     ap.add_argument("--folds", type=int, default=None)
     ap.add_argument("--no-flank", action="store_true")
+    ap.add_argument("--headroom", action="store_true",
+                    help="is the reduced column set also out of material?")
     ap.add_argument("--residual", action="store_true",
                     help="run the leftover-columns accounting follow-up")
     ap.add_argument("--depth", action="store_true",
                     help="run the depth / k-mer-ladder follow-up instead")
     args = ap.parse_args(argv)
+    if args.headroom:
+        run_headroom(n_splits=args.folds or config.N_SPLITS)
+        summary_headroom()
+        return 0
     if args.residual:
         run_residual(seeds=tuple(args.seeds) if args.seeds else None,
                      n_splits=args.folds)

@@ -25,7 +25,7 @@ files are named after what they add on top of the baseline, e.g.
 |---|---|
 | `Jacky/` | gene-essentiality and features A–D experiments, grid search |
 | `Joshua/` | QCT-derived feature experiments (regional, PAM-weighted, profile shape, coupling), seed-control tests, SHAP analysis |
-| `Runjia/` | swappable baseline (XGBoost / LightGBM / CatBoost / random forest / Ridge), genomic coordinate lookup, CRISPRoff-style ΔG decomposition, flank/folding/read-count extensions; [`sgrna/`](Runjia/sgrna) — the analysis pipeline behind the report (38 modules; needs a data layout not in this repo, see its README); and [`PROGRESS_REPORT.md`](Runjia/PROGRESS_REPORT.md) — the whole project written up for an outside reader (synced copy; edit it at the source) |
+| `Runjia/` | swappable baseline (XGBoost / LightGBM / CatBoost / random forest / Ridge), genomic coordinate lookup, CRISPRoff-style ΔG decomposition, flank/folding/read-count extensions; [`sgrna/`](Runjia/sgrna) — the analysis pipeline behind the report (40 modules; needs a data layout not in this repo, see its README); and [`PROGRESS_REPORT.md`](Runjia/PROGRESS_REPORT.md) — the whole project written up for an outside reader (synced copy; edit it at the source) |
 
 ## Not versioned
 

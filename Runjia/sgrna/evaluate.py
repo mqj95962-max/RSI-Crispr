@@ -433,9 +433,23 @@ def permutation_importance_fast(model, X, y, n_repeats: int = 3,
 
 def interpretability(families=("a_flank",), models=("xgboost",), seed: int = 41,
                      n_splits: int = 5, n_features: int | None = None,
-                     n_permute: int = 40, verbose: bool = True) -> pd.DataFrame:
-    """Stability, concentration, method agreement, faithfulness, direction."""
+                     n_permute: int = 40, verbose: bool = True,
+                     importance: str = "native") -> pd.DataFrame:
+    """Stability, concentration, method agreement, faithfulness, direction.
+
+    `importance` picks what the explanation is read from. `"native"` is split
+    gain / impurity decrease / |coefficient| -- what these numbers were
+    originally computed with. `"shap"` is mean |SHAP value|, which is what the
+    docs now report: it agrees across model families where gain does not
+    (`importance_models.py`), so every metric here that depends on a ranking --
+    stability, rank agreement, concentration -- is a different number under it.
+    """
     from sklearn.model_selection import KFold
+
+    from .importance import shap_importance
+
+    if importance not in ("native", "shap"):
+        raise ValueError(f"unknown importance {importance!r}")
 
     n_features = n_features or config.N_FEATURES
     X, y, names, ids, fam = load_dataset(list(families), verbose=verbose)
@@ -458,8 +472,15 @@ def interpretability(families=("a_flank",), models=("xgboost",), seed: int = 41,
             model, needs_scale = _make(name, seed)
             a, b = _standardise(X_tr, X_va) if needs_scale else (X_tr, X_va)
             model.fit(a, y_tr)
-            imp = native_importance(model, a, y_tr, names)
+            if importance == "shap":
+                imp = shap_importance(
+                    model, b, seed=seed,
+                    linear_std=a.std(axis=0) if needs_scale else None)
+            else:
+                imp = native_importance(model, a, y_tr, names)
             if imp is None:
+                if verbose:
+                    print(f"    {name}: no {importance} importance, skipped")
                 continue
             top = np.argsort(imp)[::-1][:n_features]
             selected_sets.append(set(top.tolist()))
@@ -542,6 +563,10 @@ def main(argv=None) -> int:
     ap.add_argument("--what", choices=["prediction", "interpretability", "both"],
                     default="both")
     ap.add_argument("--time-budget", type=float, default=None)
+    ap.add_argument("--importance", choices=["native", "shap"], default="shap",
+                    help="what the interpretability metrics are read from; "
+                         "SHAP is the reported default, native is the "
+                         "historical gain-based figure")
     args = ap.parse_args(argv)
 
     deadline = time.time() + args.time_budget if args.time_budget else None
@@ -560,7 +585,8 @@ def main(argv=None) -> int:
     if args.what in ("interpretability", "both"):
         print("\n=== interpretability ===")
         df = interpretability(args.families, args.models, seed=args.seeds[0],
-                              n_splits=args.folds)
+                              n_splits=args.folds, importance=args.importance)
+        df.insert(1, "importance", args.importance)
         _append(df, RESULTS_INTERPRET)
         if not df.empty:
             print(df.round(4).to_string(index=False))

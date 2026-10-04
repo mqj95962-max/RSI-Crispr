@@ -2,13 +2,12 @@
 
 **S**imple **L**ightweight **I**nterpretable **C**RISPR **E**fficiency **R**anker.
 
-RSI09. State of the project as of 4 October 2026. Written to be read without a
-background in molecular biology or machine learning: Part 1 defines every
-technical term, Part 2 explains how to read the numbers, and each result says
-what it means in plain words before giving the figure.
+RSI09. State of the project as of 4 October 2026. Each result says what it means
+before giving the figure; Parts 1 and 2 cover only the points where a reader who
+knows the background still gets *this* dataset wrong.
 
 This document states what we currently think and the evidence for it. It
-deliberately contains no record of what we used to think — fourteen claims have
+deliberately contains no record of what we used to think — sixteen claims have
 been withdrawn along the way, and those live in a separate working file
 (`local/MISCONCEPTIONS.md`, not in the repo) so that this one reads as a
 statement rather than a diary. `FINDINGS_LOG.md` is the chronological record and
@@ -19,8 +18,8 @@ statement rather than a diary. `FINDINGS_LOG.md` is the chronological record and
 ## Contents
 
 - [Part 0 — Why this problem is worth working on](#part-0--why-this-problem-is-worth-working-on)
-- [Part 1 — The words you'll need](#part-1--the-words-youll-need)
-- [Part 2 — How to read the numbers](#part-2--how-to-read-the-numbers)
+- [Part 1 — Six things about this problem that are easy to get wrong](#part-1--six-things-about-this-problem-that-are-easy-to-get-wrong)
+- [Part 2 — What the headline number does and does not mean](#part-2--what-the-headline-number-does-and-does-not-mean)
 - [Part 3 — Where SLICER stands](#part-3--where-slicer-stands)
 - [Part 4 — What made it possible: decoding the published dataset](#part-4--what-made-it-possible-decoding-the-published-dataset)
 - [Part 5 — The one large effect, and what kind of thing it is](#part-5--the-one-large-effect-and-what-kind-of-thing-it-is)
@@ -76,145 +75,76 @@ bacterial, the methods and reasoning are general.**
 
 ---
 
-## Part 1 — The words you'll need
+## Part 1 — Six things about this problem that are easy to get wrong
 
-### The biology
+Not a glossary. These are the points where a reader who knows the general
+background still reaches the wrong conclusion about *this* dataset, and each one
+is load-bearing somewhere below.
 
-**DNA** — a string in a four-letter alphabet: A, C, G, T, normally in a double
-helix where A pairs with T and C with G.
+**The screen measures survival, not cutting.** Cutting the chromosome usually
+kills a bacterium, so the experiment grows a mixed population, sequences what
+survives, and scores a guide by how far its cells *disappeared*. Survival mixes
+cutting efficiency with DNA repair, growth rate and sequencing noise. Every
+"efficiency" number in this report is that composite, and Part 7 contains a
+result we lost to forgetting it.
 
-**GC content** — the fraction of letters that are G or C. G–C pairs are held by
-three hydrogen bonds and A–T pairs by two, so **GC-rich DNA is harder to pull
-apart**. This single fact explains a surprising amount of what follows.
+**The flanking DNA is not supposed to matter.** The guide matches 20 letters;
+Cas9 reads those plus a three-letter PAM immediately downstream of them. It does
+not read the surrounding DNA. The central finding here is that the surrounding
+DNA predicts cutting anyway, which is why it took controls rather than an
+ablation to believe.
 
-**CRISPR-Cas9** — molecular scissors. **Cas9** is a protein that cuts DNA but
-does not know where.
+**"Downstream" means PAM-side, not gene-side.** Upstream and downstream are
+defined along the strand the guide matches, so the PAM is downstream by
+construction. The asymmetry in Part 5 is about the PAM side, and Part 5 also
+shows why this screen cannot tell that apart from the gene's own direction.
 
-**Guide RNA (sgRNA)**, or **guide** — the address label, carrying a 20-letter
-sequence. Cas9 cuts wherever the DNA matches it.
+**GC content is the mechanism, not a covariate.** G–C pairs are held by three
+hydrogen bonds and A–T by two, so GC-rich DNA is harder to pull apart. Cas9 has
+to open the duplex to engage, which makes "how GC-rich is the DNA around here" a
+physical cause rather than a proxy, and explains why four separate feature
+families turned out to be one variable (Part 7).
 
-**Protospacer** — the 20 letters of DNA being targeted. **Target** is used
-interchangeably.
+**Bacteria have no nucleosomes.** Humans, animals and plants wrap DNA around
+histone spools that physically block Cas9, and in human screens chromatin
+accessibility is the dominant predictor. Bacteria pack DNA with proteins like HU
+and H-NS instead, which is a different kind of obstacle. This is the reason the
+cross-kingdom transfer in Part 10 is zero rather than merely weak.
 
-**PAM** — a three-letter signal in the DNA immediately after the target, which
-must read **NGG** (any letter, G, G) or Cas9 will not cut. Note *where* it is:
-immediately 3′ of the protospacer, i.e. on the **downstream** side. Different Cas
-enzymes need different PAMs, which matters in Part 5.
+**~20 guides sit in every gene, so plain cross-validation leaks.** A model told
+roughly *where* a guide is can score well by recognising a locus. Anything
+positional in this report is measured under grouped cross-validation — hide a
+whole contiguous stretch of chromosome — and where that changes the answer, it
+is said so.
 
-**Upstream / downstream** — conventionally, 5′ and 3′ along the strand the guide
-matches. The PAM is downstream.
-
-**Flank / flanking DNA** — the DNA *surrounding* the target. The guide does not
-match it and Cas9 does not read it, so the expectation is that it is irrelevant.
-The central finding here is that it is not.
-
-**R-loop** — the structure Cas9 forms once engaged: the guide RNA paired with one
-DNA strand, the other DNA strand displaced. It forms starting at the PAM and
-propagates away from it.
-
-***E. coli*** — a gut bacterium, the standard workhorse. ***C. rodentium*** — a
-mouse pathogen and close relative; both are in the family *Enterobacteriaceae*.
-
-**Nucleoid-associated proteins** — bacteria pack DNA with proteins such as HU and
-H-NS. This is **not** the same as the **histones** and **nucleosomes** of humans,
-animals and plants. A nucleosome is a spool of DNA wrapped around eight histone
-proteins, and it physically blocks Cas9. Bacteria have no histones. This matters
-in Part 10.
-
-**Supercoiling** — DNA can be over- or under-twisted. Over-twisted DNA is harder
-to open.
-
-### The experiment the data comes from
-
-**A screen** — an experiment testing tens of thousands of guides at once. In
-bacteria, cutting the chromosome usually kills the cell, so you grow a mixed
-population, sequence what survives, and a guide whose cells **disappeared** cut
-well.
-
-**Cut score** — the efficiency number a screen produces.
-
-**The catch, which runs through everything:** the screen measures *survival*, not
-cutting. Survival mixes cutting with DNA repair, with growth rate, and with
-sequencing noise.
-
-**Sequencing read depth** — how many times a given stretch of DNA was read.
-Explained properly in Part 7, because mistaking it for biology cost us a result.
-
-**Data cleaning / curation** — here specifically: discarding guides whose score
-came from too few sequencing reads to be reliable. A guide read 5 times has a far
-noisier score than one read 500 times. The dataset we compare against discards
-**45%** of guides this way. It does not change any remaining score.
-
-**CRISPRi** — a related technique using a *disabled* Cas9 that binds without
-cutting, switching a gene off. A different measured quantity, so CRISPRi datasets
-cannot substitute here. Worth knowing because most bacterial screens outside
-*E. coli* are CRISPRi (Part 5).
-
-### The modelling
-
-**Feature** — one number describing a guide. A model never sees the guide itself,
-only its features.
-
-**Feature set / family** — a group of features from one idea and one data source.
-Nine of them; Appendix A.
-
-**Model** — shown thousands of guides with their measured scores, predicts the
-score of one it has not seen.
-
-**Cross-validation** — hide part of the data, train on the rest, test on the
-hidden part, repeat. **Grouped** cross-validation is the stricter version used
-for anything positional: hide a whole contiguous chunk of chromosome, because the
-screen puts ~20 guides in every gene and a model told *where* a guide sits can
-otherwise score well by memorising "guides around here do about this well".
-
-**Ablation** — add one feature set, re-measure, see whether the model improved.
-
-**Permutation control** — re-run a feature set with its rows **shuffled**: the
-features are intact but no longer describe the right guide. Whatever that scores
-is the set's noise floor.
-
-**Hyperparameters** — a model's dials, set before it sees data: how many trees,
-how deep, how fast it learns. **Tuning** means searching for good values.
-
-**Gradient boosting (LightGBM, XGBoost)** — many small decision trees, each
-correcting the previous one's errors. Fast, CPU-only, named features.
-
-**Neural network (CNN, BiGRU)** — a more flexible family learning from raw data.
-A **CNN** scans for short recurring patterns. Usually needs a GPU and is hard to
-interpret. The best published competitor is one.
+One dataset caveat that belongs with these: **CRISPRi screens cannot substitute
+for cutting screens.** CRISPRi uses a disabled Cas9 that binds without cutting,
+so it measures a different quantity. Most bacterial screens outside *E. coli*
+are CRISPRi, which is why Part 5 ends with an open question rather than a
+cross-species result.
 
 ---
 
-## Part 2 — How to read the numbers
+## Part 2 — What the headline number does and does not mean
 
-This part exists because the main metric is easy to over-interpret, and we have
-done so at least twice.
+Three facts about the metrics that changed a conclusion in this project, and an
+audit of which numbers carry error bars.
 
-### Spearman ρ, and what it is not
+### A difference in ρ is not a difference in an amount of anything
 
-**Spearman ρ** measures whether the model gets the **ordering** right: rank the
-guides by prediction, rank them by true score, and correlate the ranks. 0 is
-random, 1 is perfect. It is the right headline because nobody needs a guide's
-exact efficiency — they have candidates and want the best one.
+Spearman ρ measures whether the ordering is right, which is the right headline
+because nobody needs a guide's exact efficiency — they have candidates and want
+the best one. But **ratios of Δρ are not ratios of information.** On the ρ²
+scale, 0.53 → 0.61 is worth +0.09 while 0.82 → 0.90 is worth +0.18: the same Δρ
+is worth twice as much higher up. So when this report says the flank features
+extract 4.2× what a CNN gets from the same DNA, that compares two measurements
+taken **at the same baseline** and does not generalise to other baselines. We
+stated it as though it did, once.
 
-But ρ is a correlation, and **differences in ρ are not differences in an amount
-of anything.** Three specific errors to avoid:
+### What ρ buys on the decision a practitioner actually makes
 
-**"4× the increase in ρ means 4× better" — no.** A ratio of two Δρ values is not
-a ratio of information, accuracy, or usefulness. If you want a quantity that
-behaves additively, ρ² is closer (it is roughly a share of variance), and
-−½·log(1−ρ²) is closer still (it is in bits). On the ρ² scale, going 0.53 → 0.61
-is worth +0.09 while 0.82 → 0.90 is worth +0.18 — **the same Δρ is worth twice as
-much higher up.** So when this report says the flank features are worth 4.2× what
-a CNN extracts from the same DNA, that is a statement about two measurements
-taken at the same baseline, and it does not generalise to comparisons at
-different baselines.
-
-**"We are 70% of the way to the ceiling" — only on a stated scale.** 0.707/0.90
-is 79% of the way on the ρ scale. On the scale that matters for a decision it is
-different, and the honest thing is to say which you mean. Simulating the decision
-directly (take ten candidate guides, let a model of given ρ choose, record where
-its pick really falls):
+Simulating it directly — take ten candidate guides, let a model of given ρ
+choose, record where its pick really falls:
 
 | model ρ | pick lands at |
 |---:|---|
@@ -225,87 +155,43 @@ its pick really falls):
 | 0.90 | 88th |
 | 1.00 | 91st |
 
-Two things to take from this. **The whole range from useless to perfect spans
-only the 50th to the 91st percentile** — a perfect model does not hand you a
-perfect guide, because ten random candidates may not contain a great one. And
-**most of the available benefit arrives early**: the first 0.53 of ρ buys 23
-percentile points, the next 0.47 buys 18. So on the decision scale we are
-(81−50)/(88−50) = **82%** of the way to the ceiling, which happens to be close to
-the 79% the ρ scale gives — coincidence at these values, not a rule.
+**The whole range from useless to perfect spans the 50th to the 91st
+percentile** — a perfect model does not hand you a perfect guide, because ten
+random candidates may not contain a great one. And **most of the benefit arrives
+early**: the first 0.53 of ρ buys 23 percentile points, the next 0.47 buys 18.
+On this scale we are 82% of the way to the ceiling, against 79% on the ρ scale;
+the agreement is a coincidence at these values, not a rule.
 
-**ρ versus R².** R² is the share of *variance* of the actual values explained; ρ
-is agreement on *ranks*. R² therefore cares about predicting the right scale
-(calibration) and is sensitive to outliers; ρ ignores both. They can disagree
-violently. Our own clearest case: a LightGBM with a robust loss function scored
-**R² 0.192 and ρ 0.568** — the same model, on the same data, looking broken on
-one metric and respectable on the other, because the robust loss shrinks
-predictions towards the middle and destroys the scale while preserving the order.
-**Report both.** For choosing a guide, ρ is the relevant one; for claiming you
-can predict efficiency, R² is.
+### Report ρ and R² together, because they can disagree violently
 
-### Statistical significance, and the right comparison
+Our own clearest case: a LightGBM with a robust loss scored **R² 0.192 and
+ρ 0.568** — same model, same data, broken on one metric and respectable on the
+other, because the robust loss shrinks predictions toward the middle and
+destroys the scale while preserving the order. For choosing a guide ρ is the
+relevant one; for claiming you can predict efficiency, R² is.
 
-A single fold's ρ is less precise than it looks. With a validation fold of
-n = 6,713, the standard error of ρ is about 1/√(n−3) = **0.0122**, so a single
-fold's 0.707 carries a 95% interval of roughly **[0.683, 0.731]** — ±0.024, wider
-than most effects in this project.
+### Which numbers have error bars
 
-**That is the wrong interval to use for comparing models**, though, and using it
-would make almost nothing here significant. Two models evaluated on the *same*
-folds share all the fold-to-fold difficulty, so the comparison should be
-**paired**: take the difference per fold and test that. Our head-to-head against
-crisprHAL 2:
-
-| | |
-|---|---|
-| per-fold differences | +0.0089, +0.0091, +0.0142, +0.0090, +0.0125 |
-| mean | **+0.0107** |
-| standard error of the mean | **0.0011** |
-| paired *t* | p = 0.0006 |
-| Wilcoxon signed-rank | p = 0.0625 |
-
-**The paired standard error is eleven times smaller than the single-fold
-interval**, which is the whole reason paired designs are used. Note also the two
-*p*-values disagree by two orders of magnitude: with n = 5 the signed-rank test
-cannot go below 0.0625 however large the effect, so it is the *t*-test that has
-power here and the sign test that bounds how much a rank-based reading can claim.
-Both are quoted throughout for that reason.
-
-**And statistical significance is not importance.** The +0.0107 above is highly
-significant and, as Part 3 explains, still not a defensible claim of superiority,
-because an effect the same size is available from tuning either model.
-
-### Do all the numbers have error estimates?
-
-Honest audit:
+Models are compared on the *same* folds, so comparisons are paired: for the
+head-to-head the paired standard error is **0.0011** against a single fold's
+**0.0122**, eleven times smaller, which is the whole reason paired designs are
+used. With five folds the Wilcoxon signed-rank test cannot go below p = 0.0625
+however large the effect, so both it and the paired *t* are quoted — the *t* has
+the power, the sign test bounds what a rank-based reading can claim.
 
 | kind of number | replication | error estimate |
 |---|---|---|
-| headline ablations and head-to-head | 5–25 folds, 1–5 seeds | **yes** — fold sd, and paired tests against the relevant arm |
+| headline ablations and head-to-head | 5–25 folds, 1–5 seeds | **yes** — fold sd, paired tests |
 | transfer within a screen | 5 folds | **yes** — fold sd and paired p |
-| cross-organism model transfer | **one fit per cell** | **no** — single number, no interval |
-| correlations of one column with the label | n = 13,880–59,489 | **implicit** — SE ≈ 1/√n ≈ 0.004–0.008, not usually quoted |
-| correlations *between* columns | same | **not quoted** |
-| the redundancy and cross-redundancy R² | 5-fold out-of-fold | partial — a distribution over columns is reported, not an interval per column |
-| the ceiling | — | **now a range**, Part 10 |
-| timings | 5 repetitions, pinned threads | **yes** — IQR |
+| cross-organism model transfer | 3 model seeds, one test set | **partial** — no interval over the test set |
+| correlations with the label | n = 13,880–59,489 | implicit, SE ≈ 0.004–0.008 |
+| redundancy and cross-redundancy R² | 5-fold out-of-fold | a distribution over columns, not an interval per column |
+| the ceiling | — | **a range**, Part 10 |
+| timings and peak memory | 5 repetitions, pinned threads | **yes** — IQR |
 
-**The weakest cell is cross-organism transfer**: each train→test figure is a
-single fit, so the 92%/89% retentions have no interval and should not be compared
-with each other. Fixing it means repeating with several seeds and bootstrapping
-the test set — cheap, not yet done, and listed in Part 12.
-
-### How correlation between columns is calculated
-
-Used in several places (features correlating 0.90–0.96 with GC; read-depth tracks
-correlating −0.70 with mappability; attribution in Part 9), so worth stating
-once. Unless a result says otherwise it is the **Pearson** correlation: subtract
-each column's mean, divide by its standard deviation, take the average product
-over guides. For a pair of columns *x* and *y* over *n* guides that is
-Σ(xᵢ−x̄)(yᵢ−ȳ) / (n·sₓ·s_y). Where the relationship is clearly non-linear, or a
-column is an indicator, **Spearman** (the same formula on ranks) is used instead
-and is named. Missing values are mean-filled before correlating, which biases
-estimates slightly towards zero for sparse columns.
+**And statistical significance is not importance.** The +0.0107 head-to-head
+margin is highly significant and still not a defensible claim of superiority,
+because an effect the same size is available from tuning either model.
 
 ---
 
@@ -353,25 +239,45 @@ Measured on one machine, CPU to CPU, threads pinned, five repetitions:
 |---|---|---|
 | one fold | **17.1 s** (IQR 0.7) | ~21 min |
 | five folds | **1.4 min** | **105 min** |
-| peak memory | 4.03 GB | 4.55 GB |
+| peak memory, one fold | 3.33 GB (3.23–3.68) | 4.55 GB |
 | features | named quantities you can look up | learned, inside a network |
 
-**About 74× less time for equal accuracy, at essentially the same memory.** The
-saving is time, not footprint — SLICER holds a 33,567 × 6,517 table in memory and
-is not light on RAM.
+**About 74× less time for equal accuracy, at broadly similar memory.** The saving
+is time, not footprint — SLICER holds a 33,567 × 6,517 table in memory and is not
+light on RAM.
 
-> **Could a different model fix the footprint? Mostly no — measured, and not
-> adopted** (`results/memory_comparison.csv`). Peak RSS, threads pinned,
-> separate processes: XGBoost selector 3.35 GB, LightGBM selector 2.93 GB, so
-> **the model is worth ~13%**. The obvious next move backfires: building the
-> dense matrix and *then* converting it to a sparse one costs *more*
-> (3.51–3.64 GB), because both copies exist at once. Reading the rows in chunks
-> and never materialising the dense array reaches **1.98 GB at identical
-> accuracy (ρ 0.7011)** — a 41% saving, but a change to the data path that
-> touches every caller, so it was left unimplemented. The larger lever is not
-> memory engineering at all: Part 4 shows **427 of the 6,232 columns are
-> statistically indistinguishable from all of them**, and 427 columns is 23 MB
-> where 6,232 is 350 MB.
+> **Where the footprint actually comes from — measured, and one lever worth
+> having** (`src/sgrna/bench.py`, `results/memory_comparison*.csv`). Peak RSS,
+> threads pinned, every repetition in a fresh process, three repetitions each,
+> because a single shot is not reliable here:
+>
+> | configuration | columns | peak (median, range) | selection | ρ |
+> |---|---:|---:|---:|---:|
+> | imports only — the floor | — | 0.17 GB | — | — |
+> | all columns + XGBoost (current) | 6,517 | **3.33** (3.23–3.68) | 12.0 s | 0.6939 |
+> | all columns + LightGBM | 6,517 | 3.05 (3.05–3.05) | 2.4 s | 0.6945 |
+> | reduced columns, subset after loading | 712 | 2.83 | 1.4 s | 0.6823 |
+> | **reduced columns, stored reduced** | 712 | **0.65** | 1.4 s | 0.6823 |
+>
+> **The model is not the lever.** The 0.3 GB between the two selectors is the
+> same size as XGBoost's own run-to-run spread, so the two are indistinguishable
+> on memory; what LightGBM buys is 5× on selection time, which is a separate
+> argument (Part 9).
+>
+> **Subsetting columns after loading is not the lever either** — 14%, because
+> peak RSS is already set by the time the subset is taken. **Storing the reduced
+> matrix is**: reading a 712-column store instead of a 6,517-column one is a
+> **5× reduction, 3.33 GB → 0.65 GB**, for −0.0116 ρ, which is the same cost the
+> reduced representation shows in Part 4. Not adopted as the default, because the
+> full-matrix form is what the reproduction check above anchors to; available if
+> footprint ever becomes the binding constraint.
+>
+> One number here has been wrong twice and the reason is the same both times. An
+> earlier version of this table reported 4.03 GB, taken from a single process
+> that ran both selectors — `ru_maxrss` is a high-water mark, so that figure
+> belonged to neither. A second version ranked the selectors from one measurement
+> each. **Peak memory needs separate processes and repetitions, exactly as timing
+> does.**
 
 Two caveats. **crisprHAL 2 as published is GPU-trained**, so this shows their
 architecture needs ~74× more *CPU* time, not that a laptop beats a GPU. And
@@ -447,13 +353,21 @@ are restatements that dilute feature selection. And **422 columns beat all
 +0.019 ahead of the entire published matrix. One family describing DNA *outside*
 the guide outweighs the whole published feature set.
 
-**Where the last 0.019 comes from — after two wrong guesses.** It cannot be
-information, since nothing in 6,232 columns is absent from the 74. The first
-explanation tried was that the redundant columns pre-compute combinations our
-trees are too shallow to build, which predicts that deeper trees close the gap.
-They do the opposite, at every encoding: 0.5081 → 0.4953 → 0.4739 → 0.4557 as
-depth goes 4 → 6 → 8 → 12. Supplying explicit triple-letter indicators hurts
-too. The gap is not about combinations.
+**Where the last 0.019 comes from.** It cannot be information, since nothing in
+6,232 columns is absent from the 74. The obvious candidate is that the extra
+columns pre-compute letter combinations our depth-4 trees are too shallow to
+build themselves — which would mean deeper trees close the gap. **They do the
+opposite, monotonically, at every encoding:**
+
+| | depth 4 | 6 | 8 | 12 |
+|---|---:|---:|---:|---:|
+| 74 columns | **0.5081** | 0.4953 | 0.4739 | 0.4557 |
+| 364 columns | **0.5189** | 0.5120 | 0.4988 | 0.4858 |
+| 1,510 columns | **0.5163** | 0.5081 | 0.4972 | 0.4781 |
+
+Supplying explicit triple-letter indicators hurts too (0.5163 against 0.5189 for
+pairs alone). So depth is not the missing ingredient, and the gap is not about
+letter combinations.
 
 What accounts for it is the **63 hand-named columns**, which are the one part of
 the matrix that is *not* derived from the guide's 20 letters — they include how
@@ -465,7 +379,34 @@ seeds, mean difference 0.0023, p = 0.11).
 So the matrix is **74 columns of sequence, 63 columns of something that is not
 sequence, and about 6,095 columns of restatement.** A 427-column replacement
 exists; it is not the default only because the 6,232-column form is what the
-reproduction check in Part 3 anchors to. One result we cannot explain and are not
+reproduction check in Part 3 anchors to.
+
+### What the reduced column set is worth in practice
+
+Three measured consequences, all at the same accuracy cost of about 0.01 ρ
+(`results/memory_comparison.csv`, `results/net_cost.csv`):
+
+| | all columns | reduced | change |
+|---|---:|---:|---|
+| peak memory, if the reduced matrix is what gets stored | 3.33 GB | **0.65 GB** | **5× less** |
+| feature-selection step | 12.0 s | **1.4 s** | **8× faster** |
+| a dense neural net on the feature table: training | 6.1 s | **1.4 s** | **4.4× faster** |
+| that net's parameters | 1,685,121 | **199,041** | 8.5× fewer |
+
+The net result is the one worth separating out, because it is easy to
+over-generalise. **A network that reads the feature table does get much cheaper**
+— almost all of a dense net's parameters live in its first layer, so cutting the
+input width cuts the model nearly proportionally, and accuracy is unchanged
+(ρ 0.6401 against 0.6413). **But the sequence CNN gets nothing**: `seqnet.py` and
+crisprHAL 2 both read raw flanking DNA and never touch the feature table, so
+their cost is epochs × convolutions over sequence length. For the architecture
+this project actually competes against, a reduced column set is not a speed-up at
+all.
+
+The memory saving has the same shape as the column-count saving and is available
+only under the same condition: **it has to be the reduced matrix that gets
+stored.** Subsetting columns after the full matrix is loaded saves 14%, because
+peak memory is set by the load. One result we cannot explain and are not
 claiming to: adding the 63 columns to the bare 74 makes things *worse* (0.5008),
 and the sign flips only once letter-pair indicators are present.
 
@@ -533,16 +474,47 @@ expectation consistent with our data, not something we tested.**
 
 **For the 250–500-letter scale it cannot be enzyme geometry.** Cas9 contacts
 nothing that far away. A compositional gradient over hundreds of bases has to be
-a property of the DNA's local state or of the assay. One concrete hypothesis we
-have *not* tested: genes have a direction, so "downstream of the PAM" is
-systematically related to the guide's orientation relative to the gene it sits in
-— which would make the asymmetry a transcription effect rather than a structural
-one. Testing it means repeating the upstream/downstream split while conditioning
-on whether the protospacer lies on the coding or template strand, which is cheap
-and listed in Part 12.
+a property of the DNA's local state or of the assay.
 
-**Until that is done, the asymmetry is a solid observation with a partial
-explanation**, and should be written that way.
+**The obvious candidate was transcription, and it is not supported.** Genes have
+a direction, so "downstream of the PAM" is systematically related to the guide's
+orientation inside its gene, and RNA polymerase unwinds DNA ahead of itself. Two
+tests follow from that, and the first one cannot be run at all:
+
+- **Conditioning on orientation is impossible on this screen.** Checked two
+  independent ways — joining the guide index to the reference gene table, and
+  reading `g_transcription`'s separately-derived `template_strand` column — the
+  library targets the gene's template strand for **13,825 of 13,879 guides, with
+  4 exceptions.** There is no variation to condition on. (It also means
+  `eng.txn.gene.template_strand` is a near-constant column, which is part of why
+  that whole family could only manage +0.015.)
+- **The asymmetry does not scale with transcription.** What the screen *can*
+  support is splitting guides by their gene's expression and measuring each
+  side's gain within each band (`results/asymmetry_expression.csv`):
+
+| expression band | baseline | upstream gain | downstream gain | downstream, count-matched | asymmetry |
+|---|---:|---:|---:|---:|---:|
+| low | 0.4733 | +0.0296 | +0.0782 | +0.0790 | 0.0486 |
+| mid | 0.4802 | +0.0177 | +0.0635 | +0.0604 | 0.0458 |
+| high | 0.4836 | +0.0177 | +0.0656 | +0.0539 | 0.0479 |
+
+**Flat.** If polymerase traffic were driving the asymmetry it should grow with
+expression; it does not move (0.0486 / 0.0458 / 0.0479), and on the count-matched
+comparison it if anything declines. One seed and ~4,600 guides per band, so this
+rules out a gradient rather than proving strict independence — but the
+transcription account predicted a gradient and there is none.
+
+The count-matched column is its own control and worth keeping. Family A is not
+symmetric — 194 downstream columns against 144 upstream, because the windows and
+the PAM-side k-mers are not mirror images — so a third of the downstream
+advantage could have been column count. Restricting downstream to a random 144
+leaves the asymmetry essentially unchanged (+0.0790 against +0.0782 in the low
+band), so **it is the side, not the budget.**
+
+**Where that leaves it:** short range has a mechanistic account from PAM-first
+engagement, long range has a measured asymmetry, a ruled-out explanation, and no
+replacement. That is the honest state, and it is a better position than before —
+an open question with one fewer candidate answer.
 
 ### 4. It is a property of the DNA, not of this particular enzyme
 
@@ -908,10 +880,11 @@ scores differ as much as possible, and each new tree is fitted to the *errors* o
 those before it. Each tree uses only a few features, and a feature that never
 produces a good split is never used.
 
-### Why LightGBM, and what the importance disagreement means
+### Which model explains itself, and what the disagreement was really about
 
-LightGBM is not chosen for accuracy — it ties XGBoost at 0.609 — but because its
-explanation is reproducible:
+The two boosters tie on accuracy at 0.609, so the choice between them was made
+on explanation quality — and by the library's default importance LightGBM wins
+clearly:
 
 | | LightGBM | XGBoost |
 |---|---:|---:|
@@ -919,10 +892,21 @@ explanation is reproducible:
 | same features chosen on a different split? | 0.72 | 0.49 |
 | features for half the importance | 151 | 330 |
 
+**Read through SHAP instead, that advantage disappears**: stability 0.74 against
+0.75, method agreement +0.40 against +0.39, and **43 against 44** columns
+carrying half the importance. XGBoost's bad row was the measurement, not the
+model — and fixing the measurement is worth far more than swapping the model
+(XGBoost's own stability goes 0.49 → 0.75 and its load-bearing columns 330 → 44
+without anything about the fit changing). That is why the champion stays
+XGBoost, which the reproduction check in Part 3 wants anyway.
+
+The rest of this section is about what the original −0.02 meant, because the
+answer is a result in its own right.
+
 That −0.02 looks alarming, so we tested what it means. Letting each model choose
-its own 300 features and comparing the top 50: **14 of 50 shared**, overall
-importance rankings correlating +0.69, held-out scores 0.627 and 0.622 — tied. So
-they really do choose differently and it really costs nothing.
+its own 300 features **by gain** and comparing the top 50: **14 of 50 shared**,
+overall gain rankings correlating +0.69, held-out scores 0.627 and 0.622 — tied.
+So they really do choose differently and it really costs nothing.
 
 **It is not that they found different biology.** For each column only one model
 picked, the closest counterpart in the other's set has median |correlation|
@@ -933,28 +917,33 @@ counterpart above 0.7. A tree does not need a single substitute for a dropped
 column; it can rebuild the same function from several weakly-correlated ones. So
 pairwise correlation only puts a floor under replaceability.
 
-**What the test did show: the two models prefer different *kinds* of column, and
-the preference is algorithmic.**
+**And the disagreement is about the measurement, not the models.** Divide each
+model's importance by what the column describes, under the method each library
+reports by default and then under SHAP (`results/attribution_summary*.csv`):
 
-| kind of column | XGBoost | LightGBM |
-|---|---:|---:|
-| target: position/letter indicators (binary) | **49%** | 18% |
-| target: quantum descriptors (continuous) | 19% | **33%** |
-| flanking-DNA windows (continuous) | 9% | **25%** |
-| flanking DNA, nearest 10 letters | 11% | 17% |
-| other published columns | 12% | 6% |
+| kind of column | gain: XGB | gain: LGBM | **SHAP: XGB** | **SHAP: LGBM** |
+|---|---:|---:|---:|---:|
+| target: position/letter indicators (binary) | **49%** | 18% | **21%** | **21%** |
+| target: quantum descriptors (continuous) | 19% | **33%** | 29% | 29% |
+| flanking DNA, nearest 10 letters | 11% | 17% | 22% | 22% |
+| other published columns | 12% | 6% | 18% | 19% |
+| flanking-DNA windows, downstream | 4% | **14%** | 5% | 5% |
+| flanking-DNA windows, upstream | 4% | **12%** | 4% | 4% |
 
-Almost the whole disagreement is one axis: **XGBoost leans on binary indicators,
-LightGBM on continuous columns** — consistent with LightGBM's histogram binning
-and leaf-wise growth making continuous features cheap to split on repeatedly. So
-a large part of what an importance ranking reflects is **the splitting algorithm's
-affinity for a column's data type**, not how much the column matters.
+Under gain the two models look like they disagree about biology, and the
+disagreement is almost entirely one axis — XGBoost leaning on the binary
+indicators, LightGBM on the continuous columns, consistent with LightGBM's
+histogram binning making continuous features cheap to split on repeatedly.
+**Under SHAP the disagreement is gone**: the largest gap on any kind of column
+is **0.3 percentage points**, against 31 points under gain. The same
+regeneration takes the shared columns in the two models' top 50 from **14 to 41**.
 
-> ⚠️ **This axis is an artefact of the measurement, not of the models.** The
-> table above uses split gain. Measured with SHAP instead, XGBoost's share on the
-> binary indicators falls from 57% to 31% and lands on LightGBM's 31% exactly —
-> see "Does this generalise beyond two boosting libraries?" below, which also
-> narrows the conclusion drawn from it.
+So the "different kinds of column" finding was real about gain and false about
+the models. Gain counts how much a split improved the fit at the moment it was
+made, which over-rewards a binary column used in many shallow nodes; SHAP
+measures the effect a column has on the output. **What an importance ranking
+reflects is partly the splitting algorithm's affinity for a column's data type —
+and that part is removable.**
 
 That also explains the −0.02. Gain credits whichever interchangeable column a
 tree used first; permutation asks what breaks when that column is destroyed, and
@@ -971,9 +960,7 @@ which is the reason to use it; reproducible is not correct.
 
 ### Does this generalise beyond two boosting libraries? Partly — and SHAP changes the answer
 
-The section above rests on two models of the same family and on one way of
-measuring importance. The previous version of this report flagged both gaps and
-said the test had not been run. It has now been
+The section above rests on two models of the same family. The wider test
 (`src/sgrna/importance_models.py`, `results/importance_model_*.csv`): seven model
 families — XGBoost, LightGBM, CatBoost, random forest, extra trees, ridge,
 elastic net — and three ways of measuring importance, on identical folds. Pairs
@@ -991,12 +978,10 @@ forests, which fit independently rather than on residuals, and penalised linear
 models, which have no selection step at all. So the column-level instability is a
 property of this matrix, not of boosting.
 
-**The second finding reverses a prediction we recorded in advance.** The
-expectation was that SHAP would fail the same way: Shapley values divide credit
-for one prediction among its inputs, so two columns carrying identical
-information should split it. **That is not what happens.** XGBoost and LightGBM
-rank each other's columns at **−0.07 by default importance and +0.87 by SHAP**
-(per block, 0.59 → 0.98). And the data-type axis above collapses:
+**The second finding is that the method matters more than the model.** XGBoost
+and LightGBM rank each other's columns at **−0.07 by default importance and
++0.87 by SHAP** (per block, 0.59 → 0.98), and the data-type axis above
+collapses:
 
 | share of importance on the binary indicators | default | SHAP |
 |---|---:|---:|
@@ -1124,6 +1109,67 @@ guides. Three reasons, and together they make it expected rather than surprising
   parameters*, not in the test labels you are scored against. That part of the gap
   is fixed by the assay.
 
+### How we know the model is not simply failing to use what it has
+
+Everything above says the *features* are exhausted. That only follows if the
+model is actually using them, and "the model is underfitting" and "the features
+are out of information" predict the same flat ablation table. The test that
+separates them is a **residual test**, and it is the single most useful
+diagnostic in this project.
+
+Fit the champion, take its **out-of-fold** predictions — so every residual is for
+a guide the model has never seen — and correlate every column we hold against
+those residuals. A column that still tracks the errors is information the model
+was given and failed to extract. A table of near-zeros means it is out of
+material.
+
+| what the model was given | strongest \|ρ\| with its residuals, among columns it **had** | among columns **held back** |
+|---|---:|---:|
+| all 6,232 published columns | **0.028** (none above 0.10) | **0.147** — the flank family |
+| the same plus the flank family | **0.031** (none above 0.10) | — nothing left to hold back |
+
+**The left column is the answer: not one of 6,480 available columns retains a
+residual correlation above 0.031.** The model is not underfitting; there is
+nothing left in those columns to extract.
+
+**And the right column is why the test can be trusted** — it has a demonstrated
+positive control. When the flank family was held back, the test flagged it at
+0.147, four times anything the model had, and adding it was then worth +0.080.
+A diagnostic that only ever returns "nothing here" is not evidence; this one
+found the one thing that was there.
+
+### Is that still true of the reduced 427-column set?
+
+It is a fair worry: the reduced representation throws away 5,805 columns, and
+although they are all functions of the 20-mer, the 427 carry only its first and
+second order. A trimer or tetramer indicator could in principle track something
+mono- and dinucleotide indicators cannot express. Re-running the residual test on
+the subset's own out-of-fold residuals (`representation_headroom.csv`):
+
+| model | out-of-fold ρ | strongest \|ρ\| among columns it has | among the columns dropped |
+|---|---:|---:|---:|
+| all 6,232 | 0.531 | 0.028 | 0.147 *(the flank family)* |
+| the 427 | 0.525 | 0.022 | 0.146 *(the flank family)* |
+| 427 + the flank family | 0.597 | 0.028 | **0.070**, none above 0.10 |
+
+Read the first two rows together: **dropping 5,805 columns did not change what
+the model is missing.** In both cases the strongest residual correlate is the
+same flank column at the same magnitude — the reduction did not create a blind
+spot, it removed restatement.
+
+The third row is the honest limit. With the flank family in, the dropped columns
+top out at **0.070** — below the 0.10 threshold this project uses for "worth
+chasing", but still **2.5× the strongest correlate among the columns the model
+has.** So the reduced set does leave a little unused, consistent with its −0.01 ρ
+cost, and the leftovers are identifiable: they are **higher-order k-mer
+indicators**, exactly the information a mono-plus-dinucleotide encoding cannot
+express.
+
+That squares with the depth result above. There is a sliver of higher-order
+sequence signal, and handing the model 1,146 trimer indicators to reach it costs
+more in selection dilution than the sliver is worth. **Both facts are true: the
+information exists, and taking it is not profitable.**
+
 ### Where the remaining room is not
 
 Each was a live hypothesis that got closed: not more rows (+0.008), not model
@@ -1156,16 +1202,28 @@ inverts, which is why it is negative rather than merely weak:
 **The GC penalty does not generalise to humans.** In *E. coli* it is the project's
 strongest single mechanism; in human data it is inert.
 
-**Do histones explain this?** Partly, and the literature supports the mechanism
-though we have not tested it. **Nucleosomes physically block Cas9**, and bacteria
-have no histones — so in human cells a major determinant is whether the target is
-*accessible*, a variable absent from our data and not inferable from sequence.
-The published human GC effect is also **non-monotonic** rather than absent: very
-high and very low GC both work less well, with roughly 40–60% the useful range,
-and a *linear* association is not significant. Our +0.017 is a linear
-correlation, so it is consistent with a real U-shape being invisible to the
-measure used. And accessibility dominates in a way it cannot in bacteria: targets
-in promoter regions, which are kept open, cut better than intergenic ones.
+**The GC effect is not absent in human cells — it is a different shape, and we
+measured it.** Fitting GC and GC² against the cut score on both matrices:
+
+| | linear ρ | linear R² | quadratic R² | curved term | turning point | sits at |
+|---|---:|---:|---:|---:|---:|---|
+| human | +0.017 | 0.0002 | **0.0042** | p < 10⁻¹⁵ | GC **0.571** | the **60th** percentile |
+| *E. coli* | −0.201 | 0.0407 | 0.0452 | p < 10⁻¹⁵ | GC 0.294 | the **1st** percentile |
+
+Both have a significant curved term; what differs is **where the turning point
+falls relative to the data.** In human guides it is interior — a genuine optimum
+near GC 0.57, with decile means rising 0.235 → 0.262 and then falling to 0.192 at
+GC 0.78. In *E. coli* it sits below the 1st percentile, so across the bulk of the
+data the relationship is a monotonic decline. **The quadratic fit explains 22×
+more human variance than the linear one**, which is why a linear ρ of +0.017 read
+as "no relationship at all". So the honest statement is not that the mechanism
+fails to transfer but that **it is replaced by one of a different shape.**
+
+**And histones are the likely reason, though that part we have not tested.**
+**Nucleosomes physically block Cas9** and bacteria have none, so in human cells a
+major determinant is whether the target is *accessible* — a variable absent from
+our data and not inferable from sequence. Targets in promoter regions, which are
+kept open, cut better than intergenic ones.
 
 Fair summary: **in human cells accessibility is a first-order determinant and
 target GC at best a weak non-linear one; in bacteria there are no nucleosomes and
@@ -1195,18 +1253,24 @@ rule explaining why in a way that generalises.
    sharpening of its statement being part of the result.
 3. **A control that overturned our own positive result**, of a kind not standard
    in this field; and a second effect traced to a measurement artefact.
-4. **Interpretability measured and then diagnosed** — the disagreement between
-   importance methods is a consequence of redundancy plus each algorithm's
-   preference for binary or continuous columns, which means an importance ranking
-   on this matrix cannot carry a biological claim, including the inherited
-   paper's.
-5. **The flank effect characterised** — a gradient rather than a motif, peaking at
+4. **Interpretability measured, diagnosed, and then fixed** — importance
+   rankings on this matrix disagree between models at ρ 0.05 because the matrix
+   is redundant and because split gain additionally rewards a column for being
+   binary. Measured with SHAP across seven model families the disagreement
+   largely goes away (ρ 0.50 per column, 0.80 per block), which both identifies
+   the artefact and supplies the method that avoids it. The consequence for the
+   inherited paper stands: its biological claim was read off a gain ranking.
+5. **The published feature set reduced to 7% of its columns** — 427 of 6,232 are
+   statistically indistinguishable from all of them, and the matrix decomposes
+   into sequence, non-sequence and restatement. This is the redundancy argument
+   turned from an interpretation into a measurement.
+6. **The flank effect characterised** — a gradient rather than a motif, peaking at
    250–500 letters, downstream-weighted, transferring across enzyme and organism
    at ~90% and across kingdoms at 0%.
-6. **The ceiling argument tested rather than assumed**, and found to rest on a
+7. **The ceiling argument tested rather than assumed**, and found to rest on a
    false independence assumption — with the systematic difference between two
    Cas9 variants quantified as a by-product.
-7. **Measured boundaries**: where the method stops, what the data cannot answer,
+8. **Measured boundaries**: where the method stops, what the data cannot answer,
    and why.
 
 ### Open
@@ -1230,23 +1294,33 @@ rule explaining why in a way that generalises.
 1. **Tune both models, or publish the parity result.** Our tuning gain is the size
    of the whole margin, so either crisprHAL 2 gets the same search — about a day
    of CPU — or the paper claims parity and says why. *Parity is a perfectly good
-   result; an unsupported lead is not.*
-2. **Test whether the upstream/downstream asymmetry is a transcription effect.**
-   Repeat the side-by-side split while conditioning on whether the protospacer
-   lies on the coding or template strand of its gene. Cheap, and it would convert
-   a solid observation with a partial explanation into a mechanism.
-3. **Put error bars on the cross-organism transfers.** Each cell of the 2×2 is a
-   single fit. Several seeds plus a bootstrap over the test set is an afternoon,
-   and it is currently the weakest-supported table in the report.
-4. **Confirm the human GC relationship is U-shaped** in the human matrix we
-   already hold. Cheap, and it upgrades "the mechanism does not transfer" to "the
-   mechanism is replaced by a different one".
-5. **Find or generate a genome-wide screen in a distant bacterium.** The one open
-   question analysis cannot close.
-6. **Adopt SHAP as the reported importance method.** It agrees across seven model
-   families at 0.50 per column and 0.80 per block where gain agrees at 0.05, and
-   it removes a 26-point artefact from XGBoost's attribution (Part 9). The code
-   exists; what remains is regenerating the figures that currently show gain.
+   result; an unsupported lead is not.* **This is the only open item that can
+   change a headline claim.**
+2. **Put a test-set interval on the cross-organism transfers.** There are now
+   three model seeds per cell, but all three share one test set, so the spread
+   understates the uncertainty. A bootstrap over the test set is an hour and it
+   is the weakest-supported table in the report.
+3. **Find or generate a genome-wide screen in a distant bacterium.** The one open
+   question analysis cannot close, and it needs wet-lab work.
+
+### Closed since the last version
+
+- **The upstream/downstream asymmetry is not a transcription effect.** Half of
+  that test turned out to be impossible — the library is 99.97% template-strand,
+  so there is no orientation to condition on — and the half that was possible
+  found the asymmetry flat across expression bands (Part 5). An open question with
+  one fewer candidate answer.
+- **The human GC relationship is U-shaped**, with an interior optimum at GC ≈ 0.57
+  and a quadratic fit explaining 22× more variance than the linear one (Part 10).
+  "The mechanism does not transfer" is now "the mechanism is replaced by one of a
+  different shape".
+- **SHAP is adopted as the reported importance method**, and the figures that
+  showed gain have been regenerated (Part 9, `results/attribution_summary_shap.csv`,
+  `interpretability.csv`). It also removed the reason to switch the champion to
+  LightGBM.
+- **The published feature set is reduced to 427 columns** with no measurable loss,
+  and the residual test confirms the reduction creates no blind spot (Part 4,
+  Part 10).
 
 ### A note on tooling, deliberately parked
 
