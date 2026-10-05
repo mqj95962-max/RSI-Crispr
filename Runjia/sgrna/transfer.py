@@ -208,6 +208,9 @@ def build(name: str, genome_fasta=None, verbose: bool = True) -> tuple[np.ndarra
     if x_path.exists() and meta_path.exists():
         import json
         meta = json.loads(meta_path.read_text())
+        if "protospacers" not in meta:
+            meta["protospacers"] = idx["protospacer"].astype(str).tolist()
+            meta_path.write_text(json.dumps(meta))
         X = np.load(x_path, mmap_mode="r")
         if verbose:
             print(f"  cached: {X.shape[0]:,} x {X.shape[1]:,}")
@@ -241,6 +244,7 @@ def build(name: str, genome_fasta=None, verbose: bool = True) -> tuple[np.ndarra
     meta_path.write_text(json.dumps(
         {"y": idx["score"].tolist(), "names": names,
          "n_base": len(base_names), "dataset": name,
+         "protospacers": idx["protospacer"].astype(str).tolist(),
          "left": (idx["left"].tolist() if "left" in idx else None),
          "genome_length": (int(idx["genome_length"].iloc[0])
                            if "genome_length" in idx else None)}))
@@ -443,9 +447,16 @@ def transfer_model(source: str, target: str, source_genome=None,
     n_base = json.loads(
         (config.INTERIM / f"transfer_{source}" / "meta.json").read_text())["n_base"]
 
-    src_p = set(json.loads((config.INTERIM / f"transfer_{source}" / "meta.json")
-                           .read_text()).get("protospacers") or [])
-    overlap = np.nan
+    src_meta = json.loads(
+        (config.INTERIM / f"transfer_{source}" / "meta.json").read_text())
+    tgt_meta = json.loads(
+        (config.INTERIM / f"transfer_{target}" / "meta.json").read_text())
+    src_p = set(src_meta.get("protospacers") or [])
+    tgt_p = set(tgt_meta.get("protospacers") or [])
+    if src_p and tgt_p:
+        overlap = len(src_p & tgt_p) / len(tgt_p)
+    else:
+        overlap = float("nan")
 
     # Split family A the same way the within-screen arms do, so the transfer
     # can be attributed: which half of the flank encoding actually carries

@@ -266,6 +266,90 @@ def top_decile_precision(y_true, y_pred, q: float = 0.1) -> float:
     return len(truly.intersection(picked.tolist())) / k
 
 
+def bootstrap_interval(y_true, y_pred, metric_fn, n_boot: int = 2000,
+                       alpha: float = 0.05, seed: int = 0) -> dict:
+    """Percentile CI for a metric by resampling test rows with replacement."""
+    y_true = np.asarray(y_true, float)
+    y_pred = np.asarray(y_pred, float)
+    n = len(y_true)
+    if n < 3:
+        v = float(metric_fn(y_true, y_pred))
+        return dict(point=v, lo=v, hi=v, n_boot=0, alpha=alpha)
+    rng = np.random.default_rng(seed)
+    stats = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        stats.append(float(metric_fn(y_true[idx], y_pred[idx])))
+    stats = np.asarray(stats)
+    lo = float(np.quantile(stats, alpha / 2))
+    hi = float(np.quantile(stats, 1 - alpha / 2))
+    return dict(
+        point=float(metric_fn(y_true, y_pred)),
+        lo=lo, hi=hi, n_boot=n_boot, alpha=alpha,
+        se=float(stats.std(ddof=1)) if len(stats) > 1 else float("nan"),
+    )
+
+
+def bootstrap_interval_grouped(y_true, y_pred, groups, metric_fn,
+                               n_boot: int = 2000, alpha: float = 0.05,
+                               seed: int = 0) -> dict:
+    """Bootstrap by resampling *groups* (genes, bins), not rows."""
+    y_true = np.asarray(y_true, float)
+    y_pred = np.asarray(y_pred, float)
+    groups = np.asarray(groups, dtype=object)
+    uniq = np.unique(groups)
+    if len(uniq) < 3:
+        return bootstrap_interval(y_true, y_pred, metric_fn, n_boot, alpha, seed)
+    rng = np.random.default_rng(seed)
+    stats = []
+    for _ in range(n_boot):
+        picked = rng.choice(uniq, size=len(uniq), replace=True)
+        mask = np.isin(groups, picked)
+        if mask.sum() < 3:
+            continue
+        stats.append(float(metric_fn(y_true[mask], y_pred[mask])))
+    if not stats:
+        return bootstrap_interval(y_true, y_pred, metric_fn, n_boot, alpha, seed)
+    stats = np.asarray(stats)
+    lo = float(np.quantile(stats, alpha / 2))
+    hi = float(np.quantile(stats, 1 - alpha / 2))
+    return dict(
+        point=float(metric_fn(y_true, y_pred)),
+        lo=lo, hi=hi, n_boot=len(stats), alpha=alpha,
+        se=float(stats.std(ddof=1)),
+        n_groups=int(len(uniq)),
+    )
+
+
+def within_gene_spearman(y_true, y_pred, gene_names, min_guides: int = 10) -> dict:
+    """Mean Spearman ρ inside each gene with enough guides."""
+    y_true = np.asarray(y_true, float)
+    y_pred = np.asarray(y_pred, float)
+    gene_names = np.asarray(gene_names, dtype=object)
+    df = pd.DataFrame(dict(gene=gene_names, y=y_true, pred=y_pred))
+    rhos = []
+    sizes = []
+    for g, sub in df.groupby("gene"):
+        if len(sub) < min_guides:
+            continue
+        rho, _ = spearmanr(sub["y"], sub["pred"])
+        if np.isfinite(rho):
+            rhos.append(float(rho))
+            sizes.append(len(sub))
+    if not rhos:
+        return dict(n_genes=0, mean_rho=float("nan"), sd_rho=float("nan"),
+                    median_rho=float("nan"), rhos=[], gene_sizes=[])
+    rhos = np.asarray(rhos)
+    return dict(
+        n_genes=int(len(rhos)),
+        mean_rho=float(rhos.mean()),
+        sd_rho=float(rhos.std(ddof=1)),
+        median_rho=float(np.median(rhos)),
+        rhos=rhos.tolist(),
+        gene_sizes=sizes,
+    )
+
+
 def expected_pick_percentile(y_true, y_pred, k: int = 10,
                              n_draws: int = 20000, seed: int = 0) -> float:
     """Draw k candidates, take the model's favourite, report its true percentile.
@@ -279,6 +363,31 @@ def expected_pick_percentile(y_true, y_pred, k: int = 10,
     idx = rng.integers(0, n, size=(n_draws, k))
     best = idx[np.arange(n_draws), np.argmax(y_pred[idx], axis=1)]
     return float(ranks[best].mean() * 100)
+
+
+def expected_pick_percentile_within_gene(y_true, y_pred, gene_names, k: int = 10,
+                                         n_draws: int = 20000, seed: int = 0) -> float:
+    """Pick-percentile simulation with candidates drawn from one gene at a time."""
+    rng = np.random.default_rng(seed)
+    y_true = np.asarray(y_true, float)
+    y_pred = np.asarray(y_pred, float)
+    gene_names = np.asarray(gene_names, dtype=object)
+    df = pd.DataFrame(dict(gene=gene_names, y=y_true, pred=y_pred))
+    percentiles = []
+    for _, sub in df.groupby("gene"):
+        if len(sub) < k:
+            continue
+        y = sub["y"].to_numpy()
+        pred = sub["pred"].to_numpy()
+        ranks = pd.Series(y).rank(pct=True).to_numpy()
+        n = len(y)
+        for _ in range(max(1, n_draws // max(1, df["gene"].nunique()))):
+            idx = rng.integers(0, n, size=k)
+            pick = idx[np.argmax(pred[idx])]
+            percentiles.append(float(ranks[pick] * 100))
+    if not percentiles:
+        return float("nan")
+    return float(np.mean(percentiles))
 
 
 def calibration_slope(y_true, y_pred) -> float:
