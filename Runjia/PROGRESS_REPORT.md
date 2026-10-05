@@ -188,9 +188,12 @@ the power, the sign test bounds what a rank-based reading can claim.
 | the ceiling | — | **a range**, Part 10 |
 | timings and peak memory | 5 repetitions, pinned threads | **yes** — IQR |
 
-**And statistical significance is not importance.** The +0.0107 head-to-head
-margin is highly significant and still not a defensible claim of superiority,
-because an effect the same size is available from tuning either model.
+**And statistical significance is not importance.** The head-to-head margin is
+highly significant at every stage — +0.0111 untuned, +0.0161 with both models
+tuned, 5 of 5 folds either way — and it is still small enough that what makes it
+quotable is the *control*, not the *p*-value: it only became a claim once both
+models had been searched, because before that an effect of the same size was
+available to whichever one got tuned.
 
 ---
 
@@ -266,13 +269,33 @@ accelerator, nothing that is not a laptop.
 
 ### Where it stands
 
-| | what it is | Spearman ρ | guides |
-|---|---|---:|---|
-| Noshay et al. 2023, their own model re-run | the paper SLICER inherits its features from | **0.479** | 13,880 |
-| crisprHAL 2 (2026) | the best published bacterial model | **0.697 ± 0.007** | 33,495 curated |
-| **SLICER** | this project | **0.707 ± 0.008** | 33,567 curated |
-| **SLICER, tuned** | settings searched to convergence | **0.721** | 33,567 curated |
-| apparent ceiling | Part 10 | 0.90–0.93 | — |
+**Everything in this table was run here, on the same rows and the same folds.**
+No row is a figure copied from a paper, which is why they can be compared at all.
+
+| | what it is | Spearman ρ | CPU per fold | peak RAM |
+|---|---|---:|---:|---:|
+| **SLICER, tuned** | this project, settings searched to convergence | **0.7212 ± 0.0016** | 17 s | 3.3 GB |
+| **SLICER** | this project, default settings | **0.7082** | 17 s | 3.3 GB |
+| **crisprHAL 2, tuned** | the best published bacterial model, searched | **0.7051 ± 0.0092** | 69 min | 4.6 GB |
+| **crisprHAL 2** | as its authors published it | **0.6971 ± 0.0067** | 21 min | 4.6 GB |
+| our CNN on raw sequence | the gradient-vs-motif test, Part 5 | 0.5165 | 2.3 min | — |
+| Noshay et al.'s iRF | the model whose features SLICER inherits | 0.4785 | 6.2 min | 2.2 GB |
+| apparent ceiling | Part 10 | 0.90–0.93 | — | — |
+
+Four things that table says at a glance. **The two serious models are within
+0.016 of each other** and everything else is far behind. **The gap between
+tuned and untuned (0.008–0.013) is comparable to the gap between the models**,
+which is why tuning both was necessary before any comparison could be believed.
+**Replacing Noshay's iRF with gradient boosting on their own matrix is worth
++0.049** — more than anything else in the table except the flanking-DNA features
+themselves. And **the cost column spans three orders of magnitude** at almost
+constant accuracy between the top two.
+
+Two honest caveats on the cost column: it is **CPU-to-CPU**, and crisprHAL 2 as
+published is GPU-trained, so this is a statement about their architecture's CPU
+cost and not about beating a GPU. And their tuned configuration is wider and runs
+longer than their default, which is why tuning moves their cost from 21 to 69
+minutes while ours does not move at all.
 
 ### Their model, actually run
 
@@ -309,31 +332,66 @@ not that they were wasteful but that the iterative reweighting buys nothing here
 which is consistent with Part 4: there is no deep interaction structure to
 amplify, because the matrix is a re-spelling of 20 letters.
 
-### The head-to-head, and why it is parity
+### The head-to-head, with both models tuned
 
 Earlier numbers in this project were measured on different guides from the model
 they were compared against. That was fixed in two steps. Because of Part 4 the
 published feature set can be computed for *anyone's* guides, so SLICER was run on
-crisprHAL 2's own 33,567 curated guides with their label: **ρ 0.7078**. Then
-rather than trust their published figure, their actual model — their
-architecture, hyperparameters, 48 epochs, code imported unchanged — was re-run on
-our exact folds: **0.6971 ± 0.0067**. As a check that the harness is faithful
-rather than flattering, it was also run on their own split and scored **0.6940**
-against their published 0.695.
+crisprHAL 2's own 33,567 curated guides with their label. Then rather than trust
+their published figure, their actual model — their architecture, their
+hyperparameters, 48 epochs, code imported unchanged — was re-run on our exact
+folds. As a check that the harness is faithful rather than flattering, it was
+also run on their own shipped split and scored **0.6940** against their published
+0.695.
 
-So SLICER is ahead by **+0.0107**, in 5 of 5 folds, paired p = 0.0006.
+That left one objection, and it was the right one: **neither model was tuned, so
+the margin might only reflect whose defaults suited this data.** Both have now
+been searched, each inside the training folds so no configuration ever sees a
+validation fold.
 
-**That is not a claim of superiority, because neither model was tuned.** Searching
-SLICER's own hyperparameters — inside the training folds only, so the choice never
-sees test data — gains **+0.0131 ± 0.0016** (5/5 folds, p = 0.00005). **Tuning
-alone moves our number by as much as the entire margin.** Tuning theirs costs
-about a day of CPU and was not done.
+| | default | tuned | tuning gain | folds improved |
+|---|---:|---:|---:|---|
+| crisprHAL 2 | 0.6971 ± 0.0067 | **0.7051 ± 0.0092** | **+0.0080** | 5/5, p = 0.018 |
+| **SLICER** | 0.7082 | **0.7212 ± 0.0016** | **+0.0131** | 5/5, p = 0.0001 |
 
-**The defensible claim is parity**: two models built on completely different
-principles landing within a hundredth of each other on identical data, with the
-difference between them no larger than the difference between tuned and untuned
-versions of either. The tuned 0.721 may be quoted as what it is — tuned against
-untuned.
+| comparison, paired by fold | mean | folds | paired *t* |
+|---|---:|---:|---:|
+| untuned | +0.0111 | 5/5 | p = 0.0002 |
+| **both tuned** | **+0.0161** | **5/5** | **p = 0.0003** |
+
+**Tuning both sides widens the margin rather than closing it.** The objection is
+answered: the lead is not an artefact of default settings. Both models improve
+under search, and ours improves more.
+
+**What the claim can now be, and what still limits it.** The previous honest
+statement was *parity*. It can now be **a small, consistent lead: +0.016 on
+identical rows, labels and folds, in 5 of 5 folds** — with one asymmetry stated
+openly, because it is large. SLICER's search ran **627 configurations** across
+the five folds; crisprHAL's ran **10**, on a single inner split, because one of
+its fits costs about a thousand times one of ours. Theirs is much the weaker
+search, so +0.016 is an upper bound on the true tuned gap.
+
+**How much that asymmetry can be hiding is itself measurable.** SLICER's search
+trace records best-so-far at every draw, so we can ask what a 10-draw budget
+would have found for *us*:
+
+| draws | share of the total tuning gain captured |
+|---:|---:|
+| 5 | 47% |
+| **10** | **66%** |
+| 20 | 74% |
+| 40 | 100% |
+
+A ten-draw search recovers about two thirds of what a converged one finds. If
+crisprHAL's ten draws behaved similarly, its converged gain would be near
+**+0.012** and its tuned score near **0.709** — leaving SLICER ahead by about
+**0.012** rather than 0.016. To erase the margin entirely their tuning would have
+to find **+0.024**, three times what it found and well outside that pattern.
+
+So: **the margin is small, it survives tuning both sides, and the correction for
+their smaller search shrinks it by about a quarter without removing it.** That is
+the strongest statement the evidence supports, and it should be written in exactly
+those terms rather than as a win.
 
 ### What they do differ in: cost
 
@@ -1474,11 +1532,13 @@ rule explaining why in a way that generalises.
 
 ### Next, in order of value for effort
 
-1. **Tune both models, or publish the parity result.** Our tuning gain is the size
-   of the whole margin, so either crisprHAL 2 gets the same search — about a day
-   of CPU — or the paper claims parity and says why. *Parity is a perfectly good
-   result; an unsupported lead is not.* **This is the only open item that can
-   change a headline claim.**
+1. **Give crisprHAL 2 an equal-sized search, on a rented GPU.** Both models are
+   now tuned and the margin survives (+0.016, 5/5 folds), but theirs had 10 draws
+   against our 627 because its fits cost ~1,000× ours. The extrapolation below
+   bounds what that hides at about a quarter of the margin; **30–50 GPU-hours,
+   roughly £20–50, would replace the bound with a measurement.** Worth doing
+   before any claim of a lead is printed, and not worth doing before the other
+   gaps here are closed.
 2. **Put a test-set interval on the cross-organism transfers.** There are now
    three model seeds per cell, but all three share one test set, so the spread
    understates the uncertainty. A bootstrap over the test set is an hour and it
@@ -1505,6 +1565,48 @@ rule explaining why in a way that generalises.
   and the residual test confirms the reduction creates no blind spot (Part 4,
   Part 10).
 
+### Could a GPU settle the comparison outright? Yes, for about £50
+
+The one thing limiting the head-to-head is that crisprHAL got 10 draws and
+SLICER got 627, and the reason is purely that their fits cost ~35 min of CPU
+each. That is a rentable problem, not a research one.
+
+Matching SLICER's search for them is **627 fits**. On the ten CPU cores here that
+is roughly **360 hours**. Their model — four 1-D convolution blocks and a
+bidirectional GRU over a 378-base input, batch 512 — is small, so on one modern
+cloud GPU a 64-epoch fit should take **2–5 minutes** rather than 35, putting the
+whole search at **20–50 GPU-hours**:
+
+| | rate | 627 fits |
+|---|---:|---:|
+| this laptop, 10 CPU cores | ~35 min/fit | ~360 h |
+| rented T4 or L4 | ~3–5 min/fit | **30–50 h, ≈ £20–50** |
+| rented A100 | ~2 min/fit | ~20 h, ≈ £25–75 |
+| Colab Pro | — | ≈ £9/month, spread over a few days |
+
+**So the decisive version of this experiment costs tens of pounds, not
+thousands** — and the right purchase is *rented* GPU time, not hardware.
+
+**A TPU specifically would be the wrong choice.** TPUs earn their keep on large
+dense matrix multiplication with XLA compilation; this model is small, and its
+recurrent branch is exactly the shape that maps badly onto them — a GRU is a
+sequential loop, not a big matmul. It would be fiddlier to set up and probably
+slower per fit than a mid-range GPU. If a TPU is what is available, a single
+consumer GPU is still the better instrument.
+
+**What it would and would not change.** It would convert the extrapolation above
+— "their converged gain is probably near +0.012, so the lead is probably ~0.012
+rather than 0.016" — into a measured number on equal footing, which is worth
+having before a claim of any lead goes into print. It would **not** change the
+cost comparison, which is already labelled CPU-to-CPU; if anything, running their
+model on the hardware it was designed for and reporting that honestly would make
+our speed advantage look smaller and the write-up more credible.
+
+**Recommendation:** worth doing, cheap, and it is the single purchase that would
+retire the last caveat on the project's headline comparison. It is not worth
+doing before the paper's other gaps are closed, because the extrapolation already
+bounds the answer and the conclusion does not hinge on it.
+
 ### A note on tooling, deliberately parked
 
 A guide-design tool or web UI is **not** a deliverable of this project. The
@@ -1516,8 +1618,9 @@ should not compete with finishing the paper.
 
 ### How to frame it
 
-**Not** "a better guide predictor". At parity that framing invites the one
-comparison this project loses — against a full-time lab with a GPU.
+**Not** "a better guide predictor". A 0.016 lead on one organism's screen invites
+the one comparison this project loses — against a full-time lab with a GPU — and
+stakes the paper on its least interesting number.
 
 Frame it as: **what determines whether a CRISPR guide works in *E. coli*, and how
 to tell in advance whether a proposed explanation can possibly help.** Then every
@@ -1536,12 +1639,15 @@ result is load-bearing:
 - the flank effect characterised as a gradient and shown to transfer across enzyme
   and organism at ~90%, across kingdoms at 0%;
 - a ceiling argument tested and found to rest on a false assumption;
-- and, as a by-product, parity with the state of the art at about 1/74th of the
-  CPU time.
+- and, as a by-product, a small measured lead over the state of the art
+  (+0.016, 5/5 folds, both tuned) at about 1/74th of the CPU time — with the
+  search asymmetry quantified rather than waved away.
 
 ### Honest caveats to carry into the paper
 
-- **Parity, not a win.** The +0.0107 margin is inside the tuning effect.
+- **A small lead, not a rout.** +0.016 with both models tuned, 5/5 folds — but
+  their search was 60× smaller than ours, which the trace analysis suggests
+  accounts for about a quarter of it.
 - **The speed advantage is CPU-to-CPU.** crisprHAL 2 as published is GPU-trained.
 - **Cross-species is untested**, and the competition's position is no better,
   which does not make ours good.
