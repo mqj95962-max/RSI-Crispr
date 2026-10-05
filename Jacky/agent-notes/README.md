@@ -8,14 +8,17 @@ so it is obvious what came from the agent conversation.
 
 | file | what it is |
 |---|---|
+| **`FOLLOWUP_REPORT_FOR_RUNJIA.md`** | **full follow-up for Runjia to vet** |
 | `WORKPLAN.md` | the three open threads + metric checklist |
-| `UPLOAD_CHECKLIST.md` | **start here** — every CSV/genome/table to gather |
+| `RESULTS.md` | headline numbers from completed runs |
+| `STATUS.md` | what is done vs blocked |
+| `UPLOAD_CHECKLIST.md` | every CSV/genome/table to gather |
 | `RUNBOOK.md` | commands once the data is uploaded |
-| `STATUS.md` | what is done vs blocked on data |
 | `CUT_SCORE_PROVENANCE.md` | what the label actually is |
-| `GUO_TABLES_INVENTORY.md` | supplementary table checklist |
-| `RUNJIA_e563081.md` | what his latest upstream commit actually changed |
-| `results/` | JSON/CSV outputs from `python -m sgrna.workplan` |
+| `GUO_TABLES_INVENTORY.md` | Data S1–S7 column inventory (done) |
+| `guo_tables/` | place for Guo Excel/PDF (binaries gitignored) |
+| `scripts/` | `workplan.py`, `run_reca_and_orientation.py` |
+| `results/` | JSON/CSV outputs |
 
 ## Sync rule
 

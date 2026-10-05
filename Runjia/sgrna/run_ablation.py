@@ -178,7 +178,8 @@ def cross_validate(X, y, feature_names, family_of, n_features=None,
                    seeds=None, n_splits=None, verbose=True, groups=None,
                    tag: str | None = None, experiment: str = "unnamed",
                    deadline: float | None = None,
-                   champion_overrides: dict | None = None) -> dict:
+                   champion_overrides: dict | None = None,
+                   return_oof: bool = False) -> dict:
     """Leakage-safe CV, resumable one fold at a time.
 
     Every fold is written to `results/folds_<tag>.csv` as soon as it finishes,
@@ -209,6 +210,9 @@ def cross_validate(X, y, feature_names, family_of, n_features=None,
     fold_rows = done.to_dict("records") if len(done) else []
     if seen and verbose:
         print(f"    resuming: {len(seen)} of {len(seeds) * n_splits} folds already done")
+
+    oof_pred = np.full(len(y), np.nan, dtype=float) if return_oof else None
+    oof_y = np.full(len(y), np.nan, dtype=float) if return_oof else None
 
     stopped_early = False
     for seed in seeds:
@@ -242,6 +246,9 @@ def cross_validate(X, y, feature_names, family_of, n_features=None,
             model = xgb.XGBRegressor(**params)
             model.fit(X_tr[:, top], y_tr)
             pred = model.predict(X_va[:, top])
+            if return_oof:
+                oof_pred[va] = np.asarray(pred).ravel()
+                oof_y[va] = y_va
 
             row = dict(
                 experiment=experiment, seed=seed, fold=fold,
@@ -267,7 +274,7 @@ def cross_validate(X, y, feature_names, family_of, n_features=None,
         print(f"    INCOMPLETE: {len(folds)} / {len(seeds) * n_splits} folds. "
               f"Re-run the same call to continue.")
     per_seed = folds.groupby("seed")[["r2", "spearman", "pearson", "mse"]].mean()
-    return dict(
+    out = dict(
         folds=folds,
         per_seed=per_seed,
         complete=complete,
@@ -279,6 +286,10 @@ def cross_validate(X, y, feature_names, family_of, n_features=None,
         selected={"engineered": float(folds["n_engineered_selected"].mean())
                   if len(folds) else 0.0},
     )
+    if return_oof:
+        out["oof_pred"] = oof_pred
+        out["oof_y"] = oof_y
+    return out
 
 
 def _permute_families(X, family_of, families, seed=0):
