@@ -1532,13 +1532,14 @@ rule explaining why in a way that generalises.
 
 ### Next, in order of value for effort
 
-1. **Give crisprHAL 2 an equal-sized search, on a rented GPU.** Both models are
-   now tuned and the margin survives (+0.016, 5/5 folds), but theirs had 10 draws
-   against our 627 because its fits cost ~1,000× ours. The extrapolation below
-   bounds what that hides at about a quarter of the margin; **30–50 GPU-hours,
-   roughly £20–50, would replace the bound with a measurement.** Worth doing
-   before any claim of a lead is printed, and not worth doing before the other
-   gaps here are closed.
+1. **At data freeze, run crisprHAL's search to its own plateau on a free Colab
+   GPU.** Both models are now tuned and the margin survives (+0.016, 5/5 folds),
+   but theirs had 10 draws against our 627. Running *their* search until *their*
+   patience fires is ~55 fits — **2–4 GPU-hours, one free Colab session** — not
+   the 627-draw match that would cost real money. Do it once, after the rows,
+   label and folds stop moving; before that it measures a moving target. It
+   replaces an extrapolation with a measurement and changes no conclusion, so it
+   is a reviewer-defence item, not a prerequisite.
 2. **Put a test-set interval on the cross-organism transfers.** There are now
    three model seeds per cell, but all three share one test set, so the spread
    understates the uncertainty. A bootstrap over the test set is an hour and it
@@ -1565,47 +1566,63 @@ rule explaining why in a way that generalises.
   and the residual test confirms the reduction creates no blind spot (Part 4,
   Part 10).
 
-### Could a GPU settle the comparison outright? Yes, for about £50
+### Could a GPU settle the comparison outright? Yes — and it should not be a budget item
 
 The one thing limiting the head-to-head is that crisprHAL got 10 draws and
-SLICER got 627, and the reason is purely that their fits cost ~35 min of CPU
-each. That is a rentable problem, not a research one.
+SLICER got 627, because their fits cost ~44 min of CPU each against our 2 s.
 
-Matching SLICER's search for them is **627 fits**. On the ten CPU cores here that
-is roughly **360 hours**. Their model — four 1-D convolution blocks and a
-bidirectional GRU over a 378-base input, batch 512 — is small, so on one modern
-cloud GPU a 64-epoch fit should take **2–5 minutes** rather than 35, putting the
-whole search at **20–50 GPU-hours**:
+**The honest size of the job is much smaller than "match 627 draws".** The trace
+analysis above is the reason: 40 draws captured **100%** of SLICER's eventual
+gain, and the remaining 587 only confirmed the plateau. So an equal-footing
+search for crisprHAL means running *its* search until *its* patience criterion
+fires — on the order of **40–55 fits**, not 627.
 
-| | rate | 627 fits |
-|---|---:|---:|
-| this laptop, 10 CPU cores | ~35 min/fit | ~360 h |
-| rented T4 or L4 | ~3–5 min/fit | **30–50 h, ≈ £20–50** |
-| rented A100 | ~2 min/fit | ~20 h, ≈ £25–75 |
-| Colab Pro | — | ≈ £9/month, spread over a few days |
+| | fits | CPU-equivalent | on a rented T4/L4 |
+|---|---:|---:|---:|
+| matching SLICER draw-for-draw | 627 | ~460 h | 30–50 h |
+| **running their search to its own plateau** | **~55** | **~40 h** | **2–4 h** |
 
-**So the decisive version of this experiment costs tens of pounds, not
-thousands** — and the right purchase is *rented* GPU time, not hardware.
+Two to four GPU-hours fits inside a **single free Colab session**, and this
+project already has a Colab notebook. So the correct recommendation is **not** to
+fund GPU time; it is to run it free, once, at the right moment.
 
-**A TPU specifically would be the wrong choice.** TPUs earn their keep on large
-dense matrix multiplication with XLA compilation; this model is small, and its
-recurrent branch is exactly the shape that maps badly onto them — a GRU is a
-sequential loop, not a big matmul. It would be fiddlier to set up and probably
-slower per fit than a mid-range GPU. If a TPU is what is available, a single
-consumer GPU is still the better instrument.
+**A TPU would be the wrong instrument.** TPUs earn their keep on large dense
+matrix multiplication under XLA. This model's recurrent branch is a bidirectional
+GRU — a sequential loop, which is the shape that maps worst onto them. Fiddlier
+to set up and probably slower per fit than a mid-range GPU.
 
-**What it would and would not change.** It would convert the extrapolation above
-— "their converged gain is probably near +0.012, so the lead is probably ~0.012
-rather than 0.016" — into a measured number on equal footing, which is worth
-having before a claim of any lead goes into print. It would **not** change the
-cost comparison, which is already labelled CPU-to-CPU; if anything, running their
-model on the hardware it was designed for and reporting that honestly would make
-our speed advantage look smaller and the write-up more credible.
+#### When to run it, and when re-tuning is actually required
 
-**Recommendation:** worth doing, cheap, and it is the single purchase that would
-retire the last caveat on the project's headline comparison. It is not worth
-doing before the paper's other gaps are closed, because the extrapolation already
-bounds the answer and the conclusion does not hinge on it.
+Re-tuning is a recurring cost if it is done while the inputs are still moving, so
+the rule matters more than the budget:
+
+| change | invalidates |
+|---|---|
+| rows, label, or fold scheme | **both** models' tuned configurations |
+| the feature set | **SLICER's only** — crisprHAL never sees the matrix |
+| documentation, new ablations, analyses outside the curated arm | **neither** |
+
+So: **tune once, at data freeze.** Before that it measures a moving target. The
+chosen configurations are recorded (`crisprhal_tuned_folds.csv`, `tuning.csv`),
+so reproducing a number when the data has not changed is a **re-fit, not a
+re-search**.
+
+#### What it would and would not buy
+
+It would replace the extrapolation — "their converged gain is probably ≈+0.012,
+so the lead is probably ≈0.012 rather than 0.016" — with a measurement on equal
+footing. It would **not** change the conclusion, and it would **not** change the
+cost comparison, which is already labelled CPU-to-CPU.
+
+**And the headline does not depend on it at all**, which is the strongest reason
+not to spend money or urgency on it. The primary comparison should be
+**untuned against untuned** — +0.0111, 5/5 folds, p = 0.0002 — because default
+settings are what anyone installing either tool actually gets, and that
+comparison carries no search-size caveat whatever. The tuned comparison is then
+a *robustness check*: it shows the margin is not an artefact of whose defaults
+suited this screen, and 10 draws against 627 is adequate for that purpose.
+Sharpening +0.016 to +0.012 changes no claim in this report, and the framing
+advice below says the margin should not be the headline in the first place.
 
 ### A note on tooling, deliberately parked
 

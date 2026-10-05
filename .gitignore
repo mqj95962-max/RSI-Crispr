@@ -18,3 +18,9 @@ __pycache__/
 # OS/editor cruft
 .DS_Store
 .ipynb_checkpoints/
+
+# Reference genomes and other downloadable third-party data. Fetch them
+# yourself rather than versioning them; Runjia/sgrna/README.md says where.
+*.gb
+*.fasta
+*.fa
