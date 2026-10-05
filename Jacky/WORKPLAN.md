@@ -26,7 +26,11 @@ taken upstream. **Do not spend time on it.** The live question is the *ceiling*,
 which is a different quantity: not "are the labels clean" but "how repeatable is
 the assay".
 
-**2. The replicates exist, and the source paper publishes reliability numbers.**
+**2. Only the averages were published — but the agreement statistics were too.**
+Runjia is right that the per-replicate values are not in the paper. That does not
+block a reliability estimate, because the *agreement between* the replicates is
+itself published as a statistic.
+
 Guo et al. 2018 (*Improved sgRNA design in bacteria via genome-wide activity
 profiling*, NAR; bioRxiv 272377) ran **two biological replicates for each of five
 conditions** (Cas9, eSpCas9, Cas9 ΔrecA, dCas9, eSpdCas9 — ten libraries), and
@@ -40,10 +44,20 @@ averaged the two replicates as a geometric mean before publishing. It also repor
 
 (All **verify** against the published figures.) Part 11 lists "a trustworthy
 ceiling, which needs replicates nobody has published" as open. That is too
-pessimistic — the replicates were run and averaged away, and the *tiling-library*
-comparison is better than replicates for our purpose because it does not share
-the library, which is the objection Part 10 raises against the 0.8095 figure
-("the shared library pulls the estimate the other way again").
+pessimistic in two ways. The replicates were run and averaged away, so the
+agreement is reported even though the per-guide values are not; and the
+*tiling-library* comparison is better than replicates for our purpose anyway,
+because it does not share the library — which is the objection Part 10 raises
+against the 0.8095 figure ("the shared library pulls the estimate the other way
+again").
+
+**And the averaging works in our favour.** The label we train on is a
+2-replicate geometric mean, so it is *less* noisy than either replicate. Under
+Spearman–Brown its reliability is `2r / (1 + r)`, above `r`, so the ceiling for
+predicting the published score is higher than the ceiling for predicting one run.
+The two-enzyme estimate missed this in both directions at once: it treated
+enzyme biology as noise (which `ceiling2.py` disproved, ρ 0.546) while ignoring
+that the target is already an average.
 
 **3. The orientation test may not be impossible after all.** `asymmetry.py --audit`
 correctly finds no orientation variation — 13,825 of 13,879 guides on one strand.
@@ -183,15 +197,43 @@ the headline result should face the same control before it goes in a paper.
 
 **2A — the artefact control on the flank effect (do this first)**
 
-- [ ] **2A.1 Does `a_flank` predict control-library abundance?** Guo's activity
-      score is a depletion of the Cas9 arm relative to a **dCas9 control arm**, so
-      binding-only effects are already divided out — good. What is not divided out
-      is composition bias in the control library itself (synthesis, PCR, GC-biased
-      amplification), which is exactly what the mappability block was built to
-      detect. With the control read counts from Thread 1.3, fit `a_flank` against
-      the control abundance. A strong fit means part of +0.080 is assay, not
-      biology. **This is the one place where Threads 1 and 2 share a
-      prerequisite**, which is the argument for doing the recount.
+- [ ] **2A.1 Does `a_flank` predict control-library abundance?** To be clear about
+      what this is not: **dCas9 is not being proposed as a substitute label.** The
+      report is right that CRISPRi measures a different quantity. The point is
+      that in Guo's design dCas9 is the **control arm of the cut score itself** —
+      the activity score is depletion of the Cas9 arm against the dCas9 arm — so
+      CRISPRi is already inside the label whether we like it or not.
+      Two consequences, pulling opposite ways:
+      - *Reassuring.* Pure library-composition bias (synthesis error, GC-biased
+        PCR) largely cancels in a ratio, which is an argument that the flank
+        effect is **not** the same class of artefact as the supercoiling gain.
+        Worth stating in the paper as a defence, not just checking privately.
+      - *Not reassuring.* The dCas9 arm is itself a CRISPRi fitness screen —
+        knocking down an essential gene kills cells too. So the cut score is
+        closer to a *contrast* between cutting lethality and knockdown lethality,
+        and knockdown lethality is a property of the gene (essentiality,
+        expression). That can manufacture **gene-level** structure in the label,
+        which is exactly the variance component Thread 4 is trying to separate.
+        **This is why the CRISPRi difference is relevant** — not as a label, but
+        as a term in the denominator.
+
+      Test: with the control read counts from Thread 1.3, fit `a_flank` against
+      the dCas9-arm abundance directly. **This is the one place where Threads 1
+      and 2 share a prerequisite**, which is the argument for doing the recount.
+- [ ] **2A.3 Write down what `cut.score` actually is.** Nobody has. The report
+      defines it only as "the published `cut.score` from Guo et al.'s 2018
+      *E. coli* depletion screen" (Appendix A), and the whole project predicts it.
+      Trace the provenance chain Guo → Noshay → crisprHAL and record: which arms
+      form the ratio, the depth normalisation (their equation II), the <20-read
+      filter, the geometric mean over replicates, and the final transform — the
+      methods say **"the absolute value of the Z-score was used as the activity
+      score"**, and an absolute value folds the distribution, which is worth
+      understanding before quoting an R². Then check it empirically:
+      `diagnose.py`'s `ceiling()` already computes `published_vs_wt_spearman` and
+      `published_vs_esp_spearman`, i.e. how well the Noshay label agrees with
+      crisprHAL's re-derivation of the same screen. Half a day, and it is
+      load-bearing for the ceiling, the metric question and the paper's methods
+      section.
 - [ ] **2A.2 Stratified control, no new data needed.** Restrict to guides in
       high-uniqueness windows using the existing `eng.mapgc.uniq.w*` columns from
       `make_diagnostic_blocks.py`, and re-run the flank ablation inside that
@@ -350,19 +392,49 @@ re-running their iRF to produce ρ 0.4785 was necessary at all (Part 3).
 
 ### The gap
 
-**Global ρ is probably not the ρ a practitioner experiences.** With ~20 guides per
-gene, a ρ pooled across a whole fold gets credit for ordering *genes* — gene A is
-more cuttable than gene B — but a practitioner has already chosen the target and is
-ranking guides inside it. Between-gene ordering is free credit on a decision
-nobody makes. This bears directly on the headline: the flank effect is long-range
-and positional, so some of +0.080/+0.164 may be gene-level signal that vanishes
-once the gene is fixed. Grouped CV tests generalisation to unseen genes; it does
-not convert the metric into a within-gene number. Part 2's pick-percentile
-simulation has the same exposure — it draws ten candidates from the library, not
-ten candidates for one gene.
+**Global ρ pools two different things.** With ~20 guides per gene, a ρ computed
+across a whole fold earns credit both for ordering *genes* — gene A is more
+cuttable than gene B — and for ordering guides *within* a gene. Those are
+different claims and the paper makes both.
+
+Runjia's framing — is the practitioner choosing a guide given a gene, or a gene
+given a guide — is the right question, and for the practitioner reading the answer
+is fairly clear: you pick the target for biological reasons and then choose among
+its guides, which is the within-gene case, and it is also the case Part 2's own
+pick-percentile simulation describes ("take ten candidate guides"). Nobody selects
+which gene to knock out based on guide efficiency. Library design is the same
+shape: one good guide per gene, chosen within gene.
+
+**But the decisive reason is novelty, not practitioner preference.** Guo et al.
+already reported locus-scale structure in 2018 — their abstract identifies
+"'resistant' genomic loci with respect to CRISPR/Cas9 activity", and they
+projected median per-gene activity along the chromosome and highlighted the poor
+regions. If the flank effect turns out to be mostly between-gene, then "the
+surrounding DNA predicts cutting" is a sharper, sequence-based account of a
+phenomenon the source paper already described qualitatively — still a
+contribution, but a different and smaller one, and a reviewer who knows that
+paper will say so. If it also operates *within* gene, it is a finer-grained
+effect than anything reported, and the claim is new. **We should find out which
+before the framing is written, not after.**
+
+Note the report is also exposed the other way: Part 7 showed our largest
+non-sequence gain was 97% read depth, and read depth is a locus-scale property.
+A flank effect concentrated between genes would sit uncomfortably close to that.
+
+Partly pre-built: `diagnose.py`'s `ceiling()` already computes
+`within_gene_variance_share` — the fraction of label variance that is within-gene
+among genes with ≥5 guides — but no results are committed, so the value lives only
+on Runjia's machine. **Ask him for that one number first**; it bounds everything
+below before any code is written. What is missing is the same decomposition
+applied to *predictions*, not to the label.
 
 ### Steps
 
+- [ ] **4.0 Ask Runjia for `within_gene_variance_share`** out of
+      `results/ceiling.json`. Already computed by `diagnose.py --ceiling`. If most
+      of the label variance is within-gene, the global ρ is not badly inflated and
+      4.1–4.3 are a short confirmation. If most of it is between-gene, they become
+      the priority for the whole paper.
 - [ ] **4.1 Within-gene ρ.** Take the existing out-of-fold predictions, group by
       `gene_name` (already in the guide index — `build_guide_index.py` writes it,
       and `run_ablation.py`'s `gene` group option uses it), compute ρ within each
@@ -393,14 +465,17 @@ ten candidates for one gene.
 
 ## Priority
 
+0. **4.0** — ask Runjia for one number already on his disk. Costs a message and
+   bounds how much of Thread 4 matters.
 1. **2A.2** — stratified mappability control on the flank effect. Runnable today,
    needs no downloads, and defends the headline result.
 2. **3.1–3.4** — bootstrap helper, the 2×2 and cross-kingdom intervals, and the
    `guide_overlap` fix. Mechanical, about an hour each, removes the weakest table.
-3. **4.1–4.3** — within-gene ρ. Cheap, uses artefacts that already exist, and can
-   change how the central claim is phrased.
-4. **1.1–1.2** — read the supplementary tables and the reliability figures. Decides
-   whether the recount is needed.
+3. **4.1–4.3** — within-gene ρ. Cheap, uses artefacts that already exist, and
+   decides whether the central claim is new relative to Guo's resistant loci.
+4. **1.1–1.2, 2A.3** — read the supplementary tables and the reliability figures,
+   and write down what the label is. Decides whether the recount is needed and
+   fixes a gap in the methods section either way.
 5. **2B.1** — replichore test. Machinery exists; sharp prediction.
 6. **1.3–1.6** — the recount, if 1.1 shows per-replicate numbers are unpublished.
    Largest piece of work here, and it unlocks both the real ceiling and 2A.1.
