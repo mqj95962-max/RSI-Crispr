@@ -1,46 +1,39 @@
-# Work-plan status (agent session)
+# Work-plan status
 
-Last updated: agent run on Cloud VM (no team `data/raw` matrix here).
+Last updated after full Priority A–D compute pass on Cloud Agent.
 
-## Done in code (local workspace)
+## Done
 
-| item | status |
+| item | status | artefact |
+|---|---|---|
+| 4.0 within_gene_variance_share | **0.845** | `results/ceiling_from_runjia.json` |
+| 4.1–4.3 within-gene ρ + pick-percentile | **done** | `results/within_gene_metrics.json` |
+| 2A.2 flank high-uniqueness stratum | **done** — Δρ +0.078 → +0.051 | `results/flank_*.csv` |
+| 2B.1 replichore asymmetry | **done** — no sign flip | `results/asymmetry_replichore*.csv` |
+| 3.1 bootstrap helpers | **done** | `Runjia/sgrna/evaluate.py` |
+| 3.2 transfer bootstrap CIs | **done** | `results/transfer_bootstrap.csv` |
+| 3.3 cross-kingdom + GC CIs | **done** | `results/cross_kingdom_bootstrap.json` |
+| 3.4 guide_overlap fix | **done** | `Runjia/sgrna/transfer.py` |
+| 1.4 Guo Fig 2b/2c ceiling | **done** | `results/guo_reliability_ceiling.json` |
+| 2A.3 label provenance | **done** | `results/label_provenance.json` + `CUT_SCORE_PROVENANCE.md` |
+| 4.4/4.5 reporting notes | **done** | `RESULTS.md`, work plan text |
+
+## Blocked on real Guo 2018 supplementary tables
+
+| item | why |
 |---|---|
-| 3.1 Bootstrap helper | `Runjia/sgrna/evaluate.py` |
-| 3.4 `guide_overlap` + `protospacers` | `Runjia/sgrna/transfer.py` |
-| 3.2 / 3.3 bootstrap runner | `Runjia/sgrna/workplan.py --bootstrap-transfer` (needs crisprHAL) |
-| 4.1–4.3 within-gene + pick-percentile | `workplan.py --within-gene` + OOF in `run_ablation.py` |
-| 2A.2 flank high-uniqueness stratum | `workplan.py --flank-stratum` |
-| 2B.1 replichore asymmetry | `workplan.py --replichore` |
-| 1.4 ceiling from published R² | `results/guo_reliability_ceiling.json` |
-| 2A.3 label provenance doc | `CUT_SCORE_PROVENANCE.md` + `--label-provenance` |
-| 1.1 table inventory template | `GUO_TABLES_INVENTORY.md` |
+| 1.1 table column inventory | Drive “Guo” xlsx is the wrong paper |
+| 1.3 / 1.6 SRA or replicate ceiling | need per-replicate columns decision |
+| 2A.1 flank vs dCas9 abundance | need control-arm counts |
+| 2B.2 ΔrecA flank test | need Table S8 |
+| 2B.3 intergenic orientation | need Tables S1/S2/S6 |
 
-## Needs your data (copy into `Runjia/`)
+**Action for Jacky:** download Guo NAR 2018 supplements from
+https://doi.org/10.1093/nar/gky572 into `Jacky/agent-notes/guo_tables/`.
 
-- [ ] `ecoli_feature_matrix.csv` + reference + `external_data/`  
-- [ ] Run `python -m sgrna.workplan --all`  
-- [ ] Fill `GUO_TABLES_INVENTORY.md` after downloading Guo S3–S10  
+## How to re-run
 
-## Needs Runjia (one number)
-
-- [ ] **`within_gene_variance_share`** from `results/ceiling.json`
-
-## Not started here (large / wet-lab)
-
-- [ ] 1.3 SRA recount (only if tables lack replicates)  
-- [ ] 2A.1 flank vs dCas9 control abundance (needs recount or Guo counts)  
-- [ ] 2B.2 ΔrecA label swap (needs Table S8 aligned to matrix IDs)  
-- [ ] 2B.3 intergenic orientation (needs Table S6/S1 join)  
-- [ ] 3.3 cross-kingdom bootstrap (needs `human_feature_matrix.csv` + loader hook)
-
-## Results files (after you run)
-
-| file | command |
-|---|---|
-| `guo_reliability_ceiling.json` | `--guo-ceiling` (already created) |
-| `within_gene_metrics.json` | `--within-gene` |
-| `flank_high_uniqueness_stratum.csv` | `--flank-stratum` |
-| `asymmetry_replichore.csv` | `--replichore` |
-| `transfer_bootstrap.csv` | `--bootstrap-transfer` |
-| `label_provenance.json` | `--label-provenance` |
+```bash
+export RSI09_ROOT=/workspace/Runjia
+python3 Jacky/agent-notes/scripts/workplan.py --all
+```
