@@ -25,10 +25,12 @@ files are named after what they add on top of the baseline, e.g.
 |---|---|
 | `Jacky/` | gene-essentiality and features A–D experiments, grid search |
 | `Joshua/` | QCT-derived feature experiments (regional, PAM-weighted, profile shape, coupling), seed-control tests, SHAP analysis |
-| `Runjia/` | swappable baseline (XGBoost / LightGBM / CatBoost / random forest / Ridge), genomic coordinate lookup, CRISPRoff-style ΔG decomposition, flank/folding/read-count extensions; [`sgrna/`](Runjia/sgrna) — the analysis pipeline behind the report (43 modules; needs a data layout not in this repo, see its README); and [`PROGRESS_REPORT.md`](Runjia/PROGRESS_REPORT.md) — the whole project written up for an outside reader (synced copy; edit it at the source) |
+| [`Runjia/`](Runjia) | [`PROGRESS_REPORT.md`](Runjia/PROGRESS_REPORT.md) — the whole project written up for an outside reader (synced copy; edit it at the source); [`sgrna/`](Runjia/sgrna) — the 43-module pipeline behind every number in it (needs a data layout not in this repo, see its README); and a swappable-model baseline for trying XGBoost / LightGBM / CatBoost / random forest / Ridge in Colab. [Folder guide](Runjia/README.md) |
 
 ## Not versioned
 
 Model training outputs (`*_ecoli/`, `five_seed_champion_ecoli_*/`, `*.pkl`,
-`*.npy`) are ignored — rerun the baseline to regenerate them. See
+`*.npy`) are ignored — rerun the baseline to regenerate them. **Reference
+genomes** (`*.gb`, `*.fasta`, `*.fa`) are ignored too: they are large, they are
+other people's published data, and they are a download away. See
 [`.gitignore`](.gitignore).

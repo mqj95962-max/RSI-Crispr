@@ -188,9 +188,12 @@ the power, the sign test bounds what a rank-based reading can claim.
 | the ceiling | — | **a range**, Part 10 |
 | timings and peak memory | 5 repetitions, pinned threads | **yes** — IQR |
 
-**And statistical significance is not importance.** The +0.0107 head-to-head
-margin is highly significant and still not a defensible claim of superiority,
-because an effect the same size is available from tuning either model.
+**And statistical significance is not importance.** The head-to-head margin is
+highly significant at every stage — +0.0111 untuned, +0.0161 with both models
+tuned, 5 of 5 folds either way — and it is still small enough that what makes it
+quotable is the *control*, not the *p*-value: it only became a claim once both
+models had been searched, because before that an effect of the same size was
+available to whichever one got tuned.
 
 ---
 
@@ -266,13 +269,33 @@ accelerator, nothing that is not a laptop.
 
 ### Where it stands
 
-| | what it is | Spearman ρ | guides |
-|---|---|---:|---|
-| Noshay et al. 2023, their own model re-run | the paper SLICER inherits its features from | **0.479** | 13,880 |
-| crisprHAL 2 (2026) | the best published bacterial model | **0.697 ± 0.007** | 33,495 curated |
-| **SLICER** | this project | **0.707 ± 0.008** | 33,567 curated |
-| **SLICER, tuned** | settings searched to convergence | **0.721** | 33,567 curated |
-| apparent ceiling | Part 10 | 0.90–0.93 | — |
+**Everything in this table was run here, on the same rows and the same folds.**
+No row is a figure copied from a paper, which is why they can be compared at all.
+
+| | what it is | Spearman ρ | CPU per fold | peak RAM |
+|---|---|---:|---:|---:|
+| **SLICER, tuned** | this project, settings searched to convergence | **0.7212 ± 0.0016** | 17 s | 3.3 GB |
+| **SLICER** | this project, default settings | **0.7082** | 17 s | 3.3 GB |
+| **crisprHAL 2, tuned** | the best published bacterial model, searched | **0.7051 ± 0.0092** | 69 min | 4.6 GB |
+| **crisprHAL 2** | as its authors published it | **0.6971 ± 0.0067** | 21 min | 4.6 GB |
+| our CNN on raw sequence | the gradient-vs-motif test, Part 5 | 0.5165 | 2.3 min | — |
+| Noshay et al.'s iRF | the model whose features SLICER inherits | 0.4785 | 6.2 min | 2.2 GB |
+| apparent ceiling | Part 10 | 0.94–0.97 | — | — |
+
+Four things that table says at a glance. **The two serious models are within
+0.016 of each other** and everything else is far behind. **The gap between
+tuned and untuned (0.008–0.013) is comparable to the gap between the models**,
+which is why tuning both was necessary before any comparison could be believed.
+**Replacing Noshay's iRF with gradient boosting on their own matrix is worth
++0.049** — more than anything else in the table except the flanking-DNA features
+themselves. And **the cost column spans three orders of magnitude** at almost
+constant accuracy between the top two.
+
+Two honest caveats on the cost column: it is **CPU-to-CPU**, and crisprHAL 2 as
+published is GPU-trained, so this is a statement about their architecture's CPU
+cost and not about beating a GPU. And their tuned configuration is wider and runs
+longer than their default, which is why tuning moves their cost from 21 to 69
+minutes while ours does not move at all.
 
 ### Their model, actually run
 
@@ -309,31 +332,66 @@ not that they were wasteful but that the iterative reweighting buys nothing here
 which is consistent with Part 4: there is no deep interaction structure to
 amplify, because the matrix is a re-spelling of 20 letters.
 
-### The head-to-head, and why it is parity
+### The head-to-head, with both models tuned
 
 Earlier numbers in this project were measured on different guides from the model
 they were compared against. That was fixed in two steps. Because of Part 4 the
 published feature set can be computed for *anyone's* guides, so SLICER was run on
-crisprHAL 2's own 33,567 curated guides with their label: **ρ 0.7078**. Then
-rather than trust their published figure, their actual model — their
-architecture, hyperparameters, 48 epochs, code imported unchanged — was re-run on
-our exact folds: **0.6971 ± 0.0067**. As a check that the harness is faithful
-rather than flattering, it was also run on their own split and scored **0.6940**
-against their published 0.695.
+crisprHAL 2's own 33,567 curated guides with their label. Then rather than trust
+their published figure, their actual model — their architecture, their
+hyperparameters, 48 epochs, code imported unchanged — was re-run on our exact
+folds. As a check that the harness is faithful rather than flattering, it was
+also run on their own shipped split and scored **0.6940** against their published
+0.695.
 
-So SLICER is ahead by **+0.0107**, in 5 of 5 folds, paired p = 0.0006.
+That left one objection, and it was the right one: **neither model was tuned, so
+the margin might only reflect whose defaults suited this data.** Both have now
+been searched, each inside the training folds so no configuration ever sees a
+validation fold.
 
-**That is not a claim of superiority, because neither model was tuned.** Searching
-SLICER's own hyperparameters — inside the training folds only, so the choice never
-sees test data — gains **+0.0131 ± 0.0016** (5/5 folds, p = 0.00005). **Tuning
-alone moves our number by as much as the entire margin.** Tuning theirs costs
-about a day of CPU and was not done.
+| | default | tuned | tuning gain | folds improved |
+|---|---:|---:|---:|---|
+| crisprHAL 2 | 0.6971 ± 0.0067 | **0.7051 ± 0.0092** | **+0.0080** | 5/5, p = 0.018 |
+| **SLICER** | 0.7082 | **0.7212 ± 0.0016** | **+0.0131** | 5/5, p = 0.0001 |
 
-**The defensible claim is parity**: two models built on completely different
-principles landing within a hundredth of each other on identical data, with the
-difference between them no larger than the difference between tuned and untuned
-versions of either. The tuned 0.721 may be quoted as what it is — tuned against
-untuned.
+| comparison, paired by fold | mean | folds | paired *t* |
+|---|---:|---:|---:|
+| untuned | +0.0111 | 5/5 | p = 0.0002 |
+| **both tuned** | **+0.0161** | **5/5** | **p = 0.0003** |
+
+**Tuning both sides widens the margin rather than closing it.** The objection is
+answered: the lead is not an artefact of default settings. Both models improve
+under search, and ours improves more.
+
+**What the claim can now be, and what still limits it.** The previous honest
+statement was *parity*. It can now be **a small, consistent lead: +0.016 on
+identical rows, labels and folds, in 5 of 5 folds** — with one asymmetry stated
+openly, because it is large. SLICER's search ran **627 configurations** across
+the five folds; crisprHAL's ran **10**, on a single inner split, because one of
+its fits costs about a thousand times one of ours. Theirs is much the weaker
+search, so +0.016 is an upper bound on the true tuned gap.
+
+**How much that asymmetry can be hiding is itself measurable.** SLICER's search
+trace records best-so-far at every draw, so we can ask what a 10-draw budget
+would have found for *us*:
+
+| draws | share of the total tuning gain captured |
+|---:|---:|
+| 5 | 47% |
+| **10** | **66%** |
+| 20 | 74% |
+| 40 | 100% |
+
+A ten-draw search recovers about two thirds of what a converged one finds. If
+crisprHAL's ten draws behaved similarly, its converged gain would be near
+**+0.012** and its tuned score near **0.709** — leaving SLICER ahead by about
+**0.012** rather than 0.016. To erase the margin entirely their tuning would have
+to find **+0.024**, three times what it found and well outside that pattern.
+
+So: **the margin is small, it survives tuning both sides, and the correction for
+their smaller search shrinks it by about a quarter without removing it.** That is
+the strongest statement the evidence supports, and it should be written in exactly
+those terms rather than as a win.
 
 ### What they do differ in: cost
 
@@ -1245,16 +1303,62 @@ specificity.
 | all of it is noise (the original assumption) | 0.810 | **0.90** |
 | the predictable ~30% is biology | 0.866 | **0.93** |
 
-So the usable figure is a **range, 0.90–0.93**. But the more important conclusion
-is that **these two screens cannot establish a ceiling properly**: they differ in
-a way that is neither shared signal nor independent noise, and the shared library
-pulls the estimate the other way again. A trustworthy ceiling needs true
-replicates — the same library, the same enzyme, two independent experiments —
-which nobody has published for a bacterial Cas9 cutting screen.
+So on these two screens the figure is a **range, 0.90–0.93** — and the more
+important conclusion was that **two different enzymes cannot establish a ceiling
+properly**: they differ in a way that is neither shared signal nor independent
+noise, and the shared library pulls the estimate the other way again.
 
-**SLICER at 0.707–0.721 is therefore somewhere around 80% of the way to a limit
-we can only bracket.** That is enough to say neither model is near it, and not
-enough to quote a precise remaining headroom.
+### The source paper's own agreement statistics, which are better evidence
+
+An earlier version of this report said a trustworthy ceiling "needs replicates
+nobody has published". **That was wrong twice over**, and the correction came
+from Jacky reading the source paper more carefully than we had.
+
+Guo et al. 2018 ran **two biological replicates per condition, by independent
+transformations**, and published the *agreement between them* even though the
+per-guide values were averaged away. Verified against the paper (*NAR* 46:7052,
+Figure 2):
+
+| comparison | n | statistic | what it measures |
+|---|---:|---:|---|
+| replicate vs replicate (Fig 2b) | 2 libraries | **R² > 0.78** | same library, same enzyme, independent transformations |
+| genome-wide vs an independent **tiling** library (Fig 2c) | 901 shared guides | **R² = 0.771** | a *different* library, a separate experiment |
+| screen vs individual colony counting (Fig 2d) | 15 sgRNAs | R² = 0.840 | an orthogonal assay |
+
+**And the label we train on is a two-replicate average.** The paper states the
+read counts "were averaged as the geometric mean". That matters, because the
+attenuation argument above bounds prediction of *one noisy observation*; our
+target is already the mean of two. Under Spearman–Brown the reliability of a
+2-item mean is `2r / (1 + r)`, which is higher than `r`. The two-enzyme estimate
+therefore erred in both directions at once: it treated enzyme biology as noise,
+and it ignored that the target is an average.
+
+Two revised estimates, and they bracket differently from the old pair:
+
+| route | r | reliability | ceiling |
+|---|---:|---:|---:|
+| **tiling library (Fig 2c)** — correlation of two independent experiments' published scores, so this *is* the reliability of the quantity we predict, no correction needed | 0.878 | 0.878 | **0.937** |
+| replicate agreement (Fig 2b) + Spearman–Brown for the 2-replicate mean | >0.883 | 0.938 | **0.969** |
+
+**The usable range is therefore ≈0.94–0.97, not 0.90–0.93**, and the tiling
+figure is the one to lead with: it is a test–retest of the exact published
+quantity with a **different library**, which is precisely the objection the
+two-enzyme estimate could not answer. It is also conservative, because a
+different library introduces design differences that are not label noise.
+
+Three caveats that keep this a range rather than a number. The published R²
+values are Pearson on read-count scale while our ceiling is quoted in Spearman,
+so the conversion is an approximation. Fig 2b is given as an **inequality**
+(">0.78") across ten libraries, so 0.883 is a floor on r, not an estimate. And
+the Spearman–Brown step assumes the activity score inherits the read counts'
+reliability, which is the weakest link in that chain — one more reason to prefer
+the tiling route.
+
+**SLICER at 0.707–0.721 is therefore about 74–77% of the way to the limit**,
+against the ~80% the old bracket implied. The headroom is larger than this report
+previously claimed, which makes the saturation results in the rest of this part
+more interesting rather than less: the model stops improving well short of a
+ceiling that is further away than we thought.
 
 ### Can the ceiling be raised?
 
@@ -1450,9 +1554,12 @@ rule explaining why in a way that generalises.
 7. **The flank effect characterised** — a gradient rather than a motif, peaking at
    250–500 letters, downstream-weighted, transferring across enzyme and organism
    at ~90% and across kingdoms at 0%.
-8. **The ceiling argument tested rather than assumed**, and found to rest on a
-   false independence assumption — with the systematic difference between two
-   Cas9 variants quantified as a by-product.
+8. **The ceiling argument tested rather than assumed**, twice. The two-enzyme
+   derivation rests on a false independence assumption — the disagreement between
+   WT-SpCas9 and eSpCas9 is predictable at ρ 0.546, so it is enzyme biology, not
+   noise. And the source paper's own replicate and tiling-library agreement puts
+   the limit at ≈0.94–0.97 rather than 0.90–0.93, once the published score is
+   recognised as a two-replicate mean.
 9. **Measured boundaries**: where the method stops, what the data cannot answer,
    and why.
 
@@ -1466,7 +1573,10 @@ rule explaining why in a way that generalises.
   and 296 guides on a plasmid inside *E. coli*. Closing this needs wet-lab work.
 - **The long-range mechanism.** We know the effect is compositional and
   downstream-weighted; we do not know what it physically is.
-- **A trustworthy ceiling**, which needs replicates nobody has published.
+- **A ceiling precise enough to quote as a number.** The ≈0.94–0.97 range rests
+  on Pearson R² values converted to a Spearman bound, one of them published only
+  as an inequality. Narrowing it needs per-guide replicate values, which exist in
+  SRA (PRJNA450978) but only as raw reads.
 
 ---
 
@@ -1474,11 +1584,14 @@ rule explaining why in a way that generalises.
 
 ### Next, in order of value for effort
 
-1. **Tune both models, or publish the parity result.** Our tuning gain is the size
-   of the whole margin, so either crisprHAL 2 gets the same search — about a day
-   of CPU — or the paper claims parity and says why. *Parity is a perfectly good
-   result; an unsupported lead is not.* **This is the only open item that can
-   change a headline claim.**
+1. **At data freeze, run crisprHAL's search to its own plateau on a free Colab
+   GPU.** Both models are now tuned and the margin survives (+0.016, 5/5 folds),
+   but theirs had 10 draws against our 627. Running *their* search until *their*
+   patience fires is ~55 fits — **2–4 GPU-hours, one free Colab session** — not
+   the 627-draw match that would cost real money. Do it once, after the rows,
+   label and folds stop moving; before that it measures a moving target. It
+   replaces an extrapolation with a measurement and changes no conclusion, so it
+   is a reviewer-defence item, not a prerequisite.
 2. **Put a test-set interval on the cross-organism transfers.** There are now
    three model seeds per cell, but all three share one test set, so the spread
    understates the uncertainty. A bootstrap over the test set is an hour and it
@@ -1505,6 +1618,64 @@ rule explaining why in a way that generalises.
   and the residual test confirms the reduction creates no blind spot (Part 4,
   Part 10).
 
+### Could a GPU settle the comparison outright? Yes — and it should not be a budget item
+
+The one thing limiting the head-to-head is that crisprHAL got 10 draws and
+SLICER got 627, because their fits cost ~44 min of CPU each against our 2 s.
+
+**The honest size of the job is much smaller than "match 627 draws".** The trace
+analysis above is the reason: 40 draws captured **100%** of SLICER's eventual
+gain, and the remaining 587 only confirmed the plateau. So an equal-footing
+search for crisprHAL means running *its* search until *its* patience criterion
+fires — on the order of **40–55 fits**, not 627.
+
+| | fits | CPU-equivalent | on a rented T4/L4 |
+|---|---:|---:|---:|
+| matching SLICER draw-for-draw | 627 | ~460 h | 30–50 h |
+| **running their search to its own plateau** | **~55** | **~40 h** | **2–4 h** |
+
+Two to four GPU-hours fits inside a **single free Colab session**, and this
+project already has a Colab notebook. So the correct recommendation is **not** to
+fund GPU time; it is to run it free, once, at the right moment.
+
+**A TPU would be the wrong instrument.** TPUs earn their keep on large dense
+matrix multiplication under XLA. This model's recurrent branch is a bidirectional
+GRU — a sequential loop, which is the shape that maps worst onto them. Fiddlier
+to set up and probably slower per fit than a mid-range GPU.
+
+#### When to run it, and when re-tuning is actually required
+
+Re-tuning is a recurring cost if it is done while the inputs are still moving, so
+the rule matters more than the budget:
+
+| change | invalidates |
+|---|---|
+| rows, label, or fold scheme | **both** models' tuned configurations |
+| the feature set | **SLICER's only** — crisprHAL never sees the matrix |
+| documentation, new ablations, analyses outside the curated arm | **neither** |
+
+So: **tune once, at data freeze.** Before that it measures a moving target. The
+chosen configurations are recorded (`crisprhal_tuned_folds.csv`, `tuning.csv`),
+so reproducing a number when the data has not changed is a **re-fit, not a
+re-search**.
+
+#### What it would and would not buy
+
+It would replace the extrapolation — "their converged gain is probably ≈+0.012,
+so the lead is probably ≈0.012 rather than 0.016" — with a measurement on equal
+footing. It would **not** change the conclusion, and it would **not** change the
+cost comparison, which is already labelled CPU-to-CPU.
+
+**And the headline does not depend on it at all**, which is the strongest reason
+not to spend money or urgency on it. The primary comparison should be
+**untuned against untuned** — +0.0111, 5/5 folds, p = 0.0002 — because default
+settings are what anyone installing either tool actually gets, and that
+comparison carries no search-size caveat whatever. The tuned comparison is then
+a *robustness check*: it shows the margin is not an artefact of whose defaults
+suited this screen, and 10 draws against 627 is adequate for that purpose.
+Sharpening +0.016 to +0.012 changes no claim in this report, and the framing
+advice below says the margin should not be the headline in the first place.
+
 ### A note on tooling, deliberately parked
 
 A guide-design tool or web UI is **not** a deliverable of this project. The
@@ -1516,8 +1687,9 @@ should not compete with finishing the paper.
 
 ### How to frame it
 
-**Not** "a better guide predictor". At parity that framing invites the one
-comparison this project loses — against a full-time lab with a GPU.
+**Not** "a better guide predictor". A 0.016 lead on one organism's screen invites
+the one comparison this project loses — against a full-time lab with a GPU — and
+stakes the paper on its least interesting number.
 
 Frame it as: **what determines whether a CRISPR guide works in *E. coli*, and how
 to tell in advance whether a proposed explanation can possibly help.** Then every
@@ -1536,19 +1708,24 @@ result is load-bearing:
 - the flank effect characterised as a gradient and shown to transfer across enzyme
   and organism at ~90%, across kingdoms at 0%;
 - a ceiling argument tested and found to rest on a false assumption;
-- and, as a by-product, parity with the state of the art at about 1/74th of the
-  CPU time.
+- and, as a by-product, a small measured lead over the state of the art
+  (+0.016, 5/5 folds, both tuned) at about 1/74th of the CPU time — with the
+  search asymmetry quantified rather than waved away.
 
 ### Honest caveats to carry into the paper
 
-- **Parity, not a win.** The +0.0107 margin is inside the tuning effect.
+- **A small lead, not a rout.** +0.016 with both models tuned, 5/5 folds — but
+  their search was 60× smaller than ours, which the trace analysis suggests
+  accounts for about a quarter of it.
 - **The speed advantage is CPU-to-CPU.** crisprHAL 2 as published is GPU-trained.
 - **Cross-species is untested**, and the competition's position is no better,
   which does not make ours good.
 - **Cross-enzyme evidence is narrow** — three point mutations on an identical
   library.
-- **The ceiling is a bracket, not a number**, and the assumption behind the usual
-  derivation is false here.
+- **The ceiling is a bracket, not a number** — ≈0.94–0.97 from the source
+  paper's own agreement statistics, revised upward from 0.90–0.93 once the
+  two-enzyme assumption was dropped and the label's two-replicate averaging
+  accounted for.
 - **Everything is bacterial.** Measured, not hedged: 0% transfer to human cells.
 - **`h_offtarget` is a null result** and `f_methylation` marginal, by their own
   floors.
