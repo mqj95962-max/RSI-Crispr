@@ -280,7 +280,7 @@ No row is a figure copied from a paper, which is why they can be compared at all
 | **crisprHAL 2** | as its authors published it | **0.6971 ± 0.0067** | 21 min | 4.6 GB |
 | our CNN on raw sequence | the gradient-vs-motif test, Part 5 | 0.5165 | 2.3 min | — |
 | Noshay et al.'s iRF | the model whose features SLICER inherits | 0.4785 | 6.2 min | 2.2 GB |
-| apparent ceiling | Part 10 | 0.90–0.93 | — | — |
+| apparent ceiling | Part 10 | 0.94–0.97 | — | — |
 
 Four things that table says at a glance. **The two serious models are within
 0.016 of each other** and everything else is far behind. **The gap between
@@ -1303,16 +1303,62 @@ specificity.
 | all of it is noise (the original assumption) | 0.810 | **0.90** |
 | the predictable ~30% is biology | 0.866 | **0.93** |
 
-So the usable figure is a **range, 0.90–0.93**. But the more important conclusion
-is that **these two screens cannot establish a ceiling properly**: they differ in
-a way that is neither shared signal nor independent noise, and the shared library
-pulls the estimate the other way again. A trustworthy ceiling needs true
-replicates — the same library, the same enzyme, two independent experiments —
-which nobody has published for a bacterial Cas9 cutting screen.
+So on these two screens the figure is a **range, 0.90–0.93** — and the more
+important conclusion was that **two different enzymes cannot establish a ceiling
+properly**: they differ in a way that is neither shared signal nor independent
+noise, and the shared library pulls the estimate the other way again.
 
-**SLICER at 0.707–0.721 is therefore somewhere around 80% of the way to a limit
-we can only bracket.** That is enough to say neither model is near it, and not
-enough to quote a precise remaining headroom.
+### The source paper's own agreement statistics, which are better evidence
+
+An earlier version of this report said a trustworthy ceiling "needs replicates
+nobody has published". **That was wrong twice over**, and the correction came
+from Jacky reading the source paper more carefully than we had.
+
+Guo et al. 2018 ran **two biological replicates per condition, by independent
+transformations**, and published the *agreement between them* even though the
+per-guide values were averaged away. Verified against the paper (*NAR* 46:7052,
+Figure 2):
+
+| comparison | n | statistic | what it measures |
+|---|---:|---:|---|
+| replicate vs replicate (Fig 2b) | 2 libraries | **R² > 0.78** | same library, same enzyme, independent transformations |
+| genome-wide vs an independent **tiling** library (Fig 2c) | 901 shared guides | **R² = 0.771** | a *different* library, a separate experiment |
+| screen vs individual colony counting (Fig 2d) | 15 sgRNAs | R² = 0.840 | an orthogonal assay |
+
+**And the label we train on is a two-replicate average.** The paper states the
+read counts "were averaged as the geometric mean". That matters, because the
+attenuation argument above bounds prediction of *one noisy observation*; our
+target is already the mean of two. Under Spearman–Brown the reliability of a
+2-item mean is `2r / (1 + r)`, which is higher than `r`. The two-enzyme estimate
+therefore erred in both directions at once: it treated enzyme biology as noise,
+and it ignored that the target is an average.
+
+Two revised estimates, and they bracket differently from the old pair:
+
+| route | r | reliability | ceiling |
+|---|---:|---:|---:|
+| **tiling library (Fig 2c)** — correlation of two independent experiments' published scores, so this *is* the reliability of the quantity we predict, no correction needed | 0.878 | 0.878 | **0.937** |
+| replicate agreement (Fig 2b) + Spearman–Brown for the 2-replicate mean | >0.883 | 0.938 | **0.969** |
+
+**The usable range is therefore ≈0.94–0.97, not 0.90–0.93**, and the tiling
+figure is the one to lead with: it is a test–retest of the exact published
+quantity with a **different library**, which is precisely the objection the
+two-enzyme estimate could not answer. It is also conservative, because a
+different library introduces design differences that are not label noise.
+
+Three caveats that keep this a range rather than a number. The published R²
+values are Pearson on read-count scale while our ceiling is quoted in Spearman,
+so the conversion is an approximation. Fig 2b is given as an **inequality**
+(">0.78") across ten libraries, so 0.883 is a floor on r, not an estimate. And
+the Spearman–Brown step assumes the activity score inherits the read counts'
+reliability, which is the weakest link in that chain — one more reason to prefer
+the tiling route.
+
+**SLICER at 0.707–0.721 is therefore about 74–77% of the way to the limit**,
+against the ~80% the old bracket implied. The headroom is larger than this report
+previously claimed, which makes the saturation results in the rest of this part
+more interesting rather than less: the model stops improving well short of a
+ceiling that is further away than we thought.
 
 ### Can the ceiling be raised?
 
@@ -1508,9 +1554,12 @@ rule explaining why in a way that generalises.
 7. **The flank effect characterised** — a gradient rather than a motif, peaking at
    250–500 letters, downstream-weighted, transferring across enzyme and organism
    at ~90% and across kingdoms at 0%.
-8. **The ceiling argument tested rather than assumed**, and found to rest on a
-   false independence assumption — with the systematic difference between two
-   Cas9 variants quantified as a by-product.
+8. **The ceiling argument tested rather than assumed**, twice. The two-enzyme
+   derivation rests on a false independence assumption — the disagreement between
+   WT-SpCas9 and eSpCas9 is predictable at ρ 0.546, so it is enzyme biology, not
+   noise. And the source paper's own replicate and tiling-library agreement puts
+   the limit at ≈0.94–0.97 rather than 0.90–0.93, once the published score is
+   recognised as a two-replicate mean.
 9. **Measured boundaries**: where the method stops, what the data cannot answer,
    and why.
 
@@ -1524,7 +1573,10 @@ rule explaining why in a way that generalises.
   and 296 guides on a plasmid inside *E. coli*. Closing this needs wet-lab work.
 - **The long-range mechanism.** We know the effect is compositional and
   downstream-weighted; we do not know what it physically is.
-- **A trustworthy ceiling**, which needs replicates nobody has published.
+- **A ceiling precise enough to quote as a number.** The ≈0.94–0.97 range rests
+  on Pearson R² values converted to a Spearman bound, one of them published only
+  as an inequality. Narrowing it needs per-guide replicate values, which exist in
+  SRA (PRJNA450978) but only as raw reads.
 
 ---
 
@@ -1670,8 +1722,10 @@ result is load-bearing:
   which does not make ours good.
 - **Cross-enzyme evidence is narrow** — three point mutations on an identical
   library.
-- **The ceiling is a bracket, not a number**, and the assumption behind the usual
-  derivation is false here.
+- **The ceiling is a bracket, not a number** — ≈0.94–0.97 from the source
+  paper's own agreement statistics, revised upward from 0.90–0.93 once the
+  two-enzyme assumption was dropped and the label's two-replicate averaging
+  accounted for.
 - **Everything is bacterial.** Measured, not hedged: 0% transfer to human cells.
 - **`h_offtarget` is a null result** and `f_methylation` marginal, by their own
   floors.
