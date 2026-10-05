@@ -148,7 +148,7 @@ other than parity that can move a headline sentence.
 
 One short section replacing Part 10's ceiling subsection: a same-enzyme
 repeatability estimate with a CI, the ceiling for both targets, and a statement of
-where ρ 0.707–0.718 sits against it. Plus a one-line correction to Part 11's
+where ρ 0.707–0.721 sits against it. Plus a one-line correction to Part 11's
 "replicates nobody has published".
 
 ### Pitfalls
