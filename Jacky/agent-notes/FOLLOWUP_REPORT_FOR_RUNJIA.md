@@ -269,8 +269,9 @@ Suggested edits only — do **not** treat as already applied.
    blocker; note agreement stats exist; SRA only needed for per-guide replicate
    training / dCas9 abundance.
 3. **Part 5 §3.** Add: (i) high-uniq flank survival +0.051; (ii) replichore
-   closed; (iii) ΔrecA relative flank gain does not shrink; (iv) intergenic
-   both-strand population exists but outside the 13,880 matrix.
+   closed; (iii) ΔrecA relative flank gain does not shrink; (iv) replace
+   “orientation impossible” with the intergenic result — asymmetry_matched
+   ≈ 0.047 (opposite nearest gene) vs ≈ 0.005 (same).
 4. **Part 2 / metric.** Add within-gene ρ ≈ 0.51 / 0.57 and within-gene
    pick-percentile 72.4th.
 5. **Part 5 / Part 12 transfer table.** Attach bootstrap CIs; note
@@ -301,7 +302,9 @@ Suggested edits only — do **not** treat as already applied.
 export RSI09_ROOT=/workspace/Runjia   # or your checkout of Runjia/
 python3 Jacky/agent-notes/scripts/workplan.py --all
 python3 Jacky/agent-notes/scripts/run_reca_and_orientation.py
+python3 Jacky/agent-notes/scripts/run_intergenic_orientation.py
 ```
+
 
 Guo Excel files belong in `Jacky/agent-notes/guo_tables/` (Data S1–S7 + PDF).
 
@@ -316,7 +319,8 @@ Please mark each as OK / change / reject:
 - [ ] High-uniq flank +0.051 into Part 5 controls  
 - [ ] Replichore candidate **closed**  
 - [ ] ΔrecA: “not supportive of repair” (with saturation caveat) — wording OK?  
-- [ ] Soften “orientation impossible” → coding-matrix only  
+- [ ] Soften “orientation impossible” → coding-matrix only; report orientation-dependent asymmetry on intergenic (≈0.047 vs ≈0.005)  
+
 - [ ] Transfer CIs + guide_overlap fix into the cross-organism table  
 - [ ] Cross-kingdom CIs excluding zero  
 - [ ] `cut.score` = Guo S4 Cas9 (ρ≈1) into methods  
