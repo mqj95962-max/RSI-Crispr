@@ -53,11 +53,22 @@ global number, and flanks still help *inside* genes.
 **Verdict:** Absolute gain shrinks (saturating assay). Relative gain does **not**
 — repair account not supported.
 
-### Thread 2B.3 — intergenic orientation audit
+### Thread 2B.3 — intergenic orientation ablation (features rebuilt)
 
-10,257 intergenic designs; strands **5,097+ / 5,160−**; 3,645 in S4 HQ; **0**
-overlap with Noshay 13,880. Population exists; asymmetry ablation needs feature
-rebuild.
+Rebuilt base + `a_flank` for S6 Good intergenic (8,954) and S4 HQ (3,645).
+Matched asymmetry by orientation vs nearest gene:
+
+| set | stratum | asymmetry_matched |
+|---|---|---:|
+| s6_good | all | 0.034 |
+| s6_good | opposite_gene | **0.047** |
+| s6_good | same_as_gene | **0.005** |
+| s4_hq | opposite_gene | **0.064** |
+| s4_hq | same_as_gene | **−0.015** |
+
+**Verdict:** Downstream advantage is orientation-dependent — re-opens a
+transcription/orientation account on intergenic guides. See
+`INTERGENIC_ORIENTATION.md`.
 
 ### Thread 3 — transfer with bootstrap CIs + fixed `guide_overlap`
 

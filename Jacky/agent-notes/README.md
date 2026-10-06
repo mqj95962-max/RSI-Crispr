@@ -9,6 +9,7 @@ so it is obvious what came from the agent conversation.
 | file | what it is |
 |---|---|
 | **`FOLLOWUP_REPORT_FOR_RUNJIA.md`** | **full follow-up for Runjia to vet** |
+| `INTERGENIC_ORIENTATION.md` | 2B.3 rebuild + orientation-conditioned asymmetry |
 | `WORKPLAN.md` | the three open threads + metric checklist |
 | `RESULTS.md` | headline numbers from completed runs |
 | `STATUS.md` | what is done vs blocked |

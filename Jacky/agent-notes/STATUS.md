@@ -13,6 +13,7 @@ Full report for Runjia: `FOLLOWUP_REPORT_FOR_RUNJIA.md`.
 | 2B.1 replichore asymmetry | **done** — no sign flip | `results/asymmetry_replichore*.csv` |
 | 2B.2 ΔrecA flank ablation | **done** — relative gain does not shrink | `results/reca_flank_*.csv` |
 | 2B.3 intergenic orientation **audit** | **done** — both strands exist; 0 in matrix | `results/intergenic_orientation_audit.json` |
+| 2B.3 intergenic orientation **ablation** | **done** — asymmetry depends on orientation | `INTERGENIC_ORIENTATION.md`, `results/intergenic_orientation_*.csv` |
 | 3.1 bootstrap helpers | **done** | `Runjia/sgrna/evaluate.py` |
 | 3.2 transfer bootstrap CIs | **done** | `results/transfer_bootstrap.csv` |
 | 3.3 cross-kingdom + GC CIs | **done** | `results/cross_kingdom_bootstrap.json` |
@@ -28,7 +29,7 @@ Full report for Runjia: `FOLLOWUP_REPORT_FOR_RUNJIA.md`.
 |---|---|
 | 2A.1 flank vs dCas9 abundance | need control-arm counts from SRA |
 | 1.3 / 1.6 SRA or replicate training | per-guide replicates not in Excel |
-| 2B.3 orientation **ablation** | rebuild features for HQ intergenic guides |
+| (none for 2B.3) | ablation complete; optional: bootstrap CI on Δ asymmetry |
 
 ## How to re-run
 
