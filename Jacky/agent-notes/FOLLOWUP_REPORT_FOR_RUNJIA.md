@@ -26,7 +26,7 @@ merged into the progress report.
 | Flank effect = sequencing artefact? | High-uniqueness stratum | Survives: Δρ **+0.078 → +0.051** |
 | Long-range asymmetry = replication fork? | Per-replichore asymmetry | **No sign flip** — candidate closed |
 | Long-range asymmetry = RecA repair? | Flank ablation on ΔrecA labels | Absolute gain shrinks; **relative** gain (Δ/baseline) does **not** — repair account not supported; saturating assay caveat stands |
-| Orientation test impossible? | Intergenic both-strand audit | Population **exists** (balanced strands) but **0** guides in the 13,880 matrix — ablation needs a feature rebuild |
+| Orientation test impossible? | Rebuilt features for 8,954 S6 Good intergenic guides; orientation-conditioned asymmetry | **Asymmetry depends on orientation** (matched Δ ≈ 0.047 opposite vs ≈ 0.005 same) — re-opens transcription/orientation account; see `INTERGENIC_ORIENTATION.md` |
 | Cross-organism CIs missing | Grouped bootstrap on test set | *E. coli*→*C. rodentium* **0.701 [0.683, 0.704]**; reverse **0.627 [0.617, 0.636]**; `guide_overlap` fixed (was NaN) |
 | Cross-kingdom “≈0” | Bootstrap CIs | Both directions **negative with CIs excluding zero** |
 | What is `cut.score`? | Provenance + empirical join | Noshay `cut.score` **=** Guo Data S4 Cas9 (ρ ≈ 1.0); absolute Z of Cas9/dCas9 ratio, 2-rep geometric mean |
@@ -188,31 +188,31 @@ Flank ablation under gene-grouped CV on Guo ΔrecA labels joined to the same
    explained by compressed dynamic range; relative ratio uninformative for a
    positive repair claim.
 
-### 5.3 Intergenic orientation (2B.3) — population exists; ablation blocked on features
+### 5.3 Intergenic orientation (2B.3) — features rebuilt; asymmetry depends on orientation
 
-Correction 3 in the work plan was right about the library design:
+**Update (done):** rebuilt base + `a_flank` for intergenic guides and ran the
+orientation-conditioned asymmetry test. Full write-up:
+`INTERGENIC_ORIENTATION.md`.
 
-| quantity | value |
-|---|---:|
-| Intergenic designed (promoter + RBS, Data S1) | **10,257** |
-| Of those with Data S6 scores | 9,520 |
-| Of those in Data S4 HQ | 3,645 |
-| Located on NC_000913.2 | 10,257 |
-| Strand + / − | **5,097 / 5,160** (balanced) |
-| Same / opposite nearest-gene ori | 5,199 / 5,058 |
-| Sequence overlap with Noshay 13,880 | **0** |
-| Coding (CRISPRi) overlap with 13,880 | **13,879** |
+Primary set = Data S6 Quality=Good promoter+RBS (**8,954**). Data S4 HQ
+intergenic is almost only RBS (1 promoter / 3,644 RBS) — used as sensitivity.
 
-So: both-strand intergenic guides **exist** and have scores; our matrix is
-essentially the coding/CRISPRi sub-library only. The orientation-conditioned
-asymmetry ablation **cannot** be re-run on the current feature matrix. Next step
-if you want it closed: rebuild `a_flank` (and baseline columns) for the ~3.6k HQ
-intergenic guides and run `asymmetry.py`-style tests there. Until then, Part 5’s
-“orientation test impossible” should be softened to “impossible **on the coding
-matrix**; intergenic both-strand population exists outside it.”
+| set | stratum | n | asymmetry_matched |
+|---|---|---:|---:|
+| s6_good | all | 8954 | 0.034 |
+| s6_good | **opposite_gene** | 4361 | **0.047** |
+| s6_good | **same_as_gene** | 4593 | **0.005** |
+| s4_hq | opposite_gene | 1866 | **0.064** |
+| s4_hq | same_as_gene | 1779 | **−0.015** |
 
-Artefacts: `results/intergenic_orientation_audit.json`,
-`intergenic_located_sample.csv`.
+**Verdict for Part 5:** Soften “orientation impossible on this screen” →
+impossible on the *coding* matrix. On intergenic guides the PAM-side advantage
+**depends on orientation vs the nearest gene** (large when opposite, ~0 when
+same). That re-opens a transcription/orientation account, with caveats
+(nearest-gene proxy; different label context; single seed).
+
+Artefacts: `results/intergenic_orientation_*.csv`,
+`intergenic_orientation_rebuild_audit.json`.
 
 ---
 
@@ -269,8 +269,9 @@ Suggested edits only — do **not** treat as already applied.
    blocker; note agreement stats exist; SRA only needed for per-guide replicate
    training / dCas9 abundance.
 3. **Part 5 §3.** Add: (i) high-uniq flank survival +0.051; (ii) replichore
-   closed; (iii) ΔrecA relative flank gain does not shrink; (iv) intergenic
-   both-strand population exists but outside the 13,880 matrix.
+   closed; (iii) ΔrecA relative flank gain does not shrink; (iv) replace
+   “orientation impossible” with the intergenic result — asymmetry_matched
+   ≈ 0.047 (opposite nearest gene) vs ≈ 0.005 (same).
 4. **Part 2 / metric.** Add within-gene ρ ≈ 0.51 / 0.57 and within-gene
    pick-percentile 72.4th.
 5. **Part 5 / Part 12 transfer table.** Attach bootstrap CIs; note
@@ -289,7 +290,7 @@ Suggested edits only — do **not** treat as already applied.
 | crisprHAL parity / tuning | **yours** | — |
 | 2A.1 flank vs dCas9 abundance | blocked | SRA recount |
 | 1.3 / 1.6 per-replicate ceiling demo | blocked / optional | SRA |
-| 2B.3 orientation **ablation** | population yes; run no | rebuild features for ~3.6k HQ intergenic guides |
+| 2B.3 orientation ablation | **done** — asymmetry orientation-dependent | optional: CI on Δ asymmetry |
 | Distant-bacterium screen | wet-lab | — |
 | Physical mechanism of 250–500 nt flank gradient | open | new hypothesis + test |
 
@@ -301,7 +302,9 @@ Suggested edits only — do **not** treat as already applied.
 export RSI09_ROOT=/workspace/Runjia   # or your checkout of Runjia/
 python3 Jacky/agent-notes/scripts/workplan.py --all
 python3 Jacky/agent-notes/scripts/run_reca_and_orientation.py
+python3 Jacky/agent-notes/scripts/run_intergenic_orientation.py
 ```
+
 
 Guo Excel files belong in `Jacky/agent-notes/guo_tables/` (Data S1–S7 + PDF).
 
@@ -316,7 +319,8 @@ Please mark each as OK / change / reject:
 - [ ] High-uniq flank +0.051 into Part 5 controls  
 - [ ] Replichore candidate **closed**  
 - [ ] ΔrecA: “not supportive of repair” (with saturation caveat) — wording OK?  
-- [ ] Soften “orientation impossible” → coding-matrix only  
+- [ ] Soften “orientation impossible” → coding-matrix only; report orientation-dependent asymmetry on intergenic (≈0.047 vs ≈0.005)  
+
 - [ ] Transfer CIs + guide_overlap fix into the cross-organism table  
 - [ ] Cross-kingdom CIs excluding zero  
 - [ ] `cut.score` = Guo S4 Cas9 (ρ≈1) into methods  
