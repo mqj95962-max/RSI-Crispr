@@ -70,6 +70,10 @@ Matched asymmetry by orientation vs nearest gene:
 transcription/orientation account on intergenic guides. See
 `INTERGENIC_ORIENTATION.md`.
 
+Bootstrap CI (OOF, 100 kb groups, 2000 resamples): opposite asymmetry
+**0.040 [0.015, 0.063]** (excludes 0); same **0.014 [−0.008, 0.034]**;
+Δ **0.026 [−0.006, 0.058]** (borderline; P(Δ≤0)=0.054).
+
 ### Thread 3 — transfer with bootstrap CIs + fixed `guide_overlap`
 
 | train → test | ρ | 95% CI | guide overlap |

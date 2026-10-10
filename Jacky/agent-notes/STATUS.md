@@ -42,7 +42,7 @@ edits are welcome — they just need to be visible.
 |---|---|
 | 2A.1 flank vs dCas9 abundance | need control-arm counts from SRA |
 | 1.3 / 1.6 SRA or replicate training | per-guide replicates not in Excel |
-| 2B.3 bootstrap CI on Δ asymmetry | optional deepen |
+| 2B.3 bootstrap CI on Δ asymmetry | **done** — opposite CI excludes 0; Δ borderline on s6_good | `results/intergenic_orientation_delta_ci.json` |
 | Better orientation label (TSS/operon) | optional deepen |
 
 ## How to re-run
