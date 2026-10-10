@@ -95,12 +95,17 @@ CIs exclude zero.
 
 ### Thread 1 — same-enzyme ceiling from published R²
 
-| assumption | ceiling |
-|---|---:|
-| One replicate (√√0.78) | 0.940 |
-| 2-replicate mean (Spearman–Brown) | **0.968** |
-| Independent tiling library | 0.937 |
-| SLICER tuned 0.721 / SB ceiling | **~74% of the way** |
+**Settled with Runjia (10 Oct):** lead with Fig 2c tiling → **≈0.94**
+(0.937 [0.929, 0.945]); keep 0.94–0.97 as range. Do **not** lead with
+Fig 2b + Spearman–Brown (0.968): that needs the activity score to inherit
+single-arm read-count reliability, which fails for a Cas9/dCas9 `|Z|` ratio
+when the control shares signal (see `RUNJIA_REPLY_2026-10-10.md`).
+
+| assumption | ceiling | role |
+|---|---:|---|
+| Independent tiling library (Fig 2c) | **0.937** | **working figure** |
+| 2-replicate mean (Fig 2b + SB) | 0.968 | optimistic upper edge only |
+| SLICER tuned 0.721 / tiling ceiling | **~77% of the way** | |
 
 ### Label provenance
 

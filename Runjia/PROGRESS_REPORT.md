@@ -280,7 +280,7 @@ No row is a figure copied from a paper, which is why they can be compared at all
 | **crisprHAL 2** | as its authors published it | **0.6971 ± 0.0067** | 21 min | 4.6 GB |
 | our CNN on raw sequence | the gradient-vs-motif test, Part 5 | 0.5165 | 2.3 min | — |
 | Noshay et al.'s iRF | the model whose features SLICER inherits | 0.4785 | 6.2 min | 2.2 GB |
-| apparent ceiling | Part 10 | 0.94–0.97 | — | — |
+| apparent ceiling | Part 10 | ≈0.94 (range 0.94–0.97) | — | — |
 
 Four things that table says at a glance. **The two serious models are within
 0.016 of each other** and everything else is far behind. **The gap between
@@ -637,18 +637,20 @@ expectation consistent with our data, not something we tested.**
 nothing that far away. A compositional gradient over hundreds of bases has to be
 a property of the DNA's local state or of the assay.
 
-**The obvious candidate was transcription, and it is not supported.** Genes have
+**The obvious candidate is transcription, and the evidence is now split.** Genes have
 a direction, so "downstream of the PAM" is systematically related to the guide's
 orientation inside its gene, and RNA polymerase unwinds DNA ahead of itself. Two
 tests follow from that, and the first one cannot be run at all:
 
-- **Conditioning on orientation is impossible on this screen.** Checked two
+- **Conditioning on orientation is impossible on *this matrix*.** Checked two
   independent ways — joining the guide index to the reference gene table, and
   reading `g_transcription`'s separately-derived `template_strand` column — the
-  library targets the gene's template strand for **13,825 of 13,879 guides, with
-  4 exceptions.** There is no variation to condition on. (It also means
-  `eng.txn.gene.template_strand` is a near-constant column, which is part of why
-  that whole family could only manage +0.015.)
+  published matrix targets the gene's template strand for **13,825 of 13,879
+  guides, with 4 exceptions.** There is no variation to condition on. (It also
+  means `eng.txn.gene.template_strand` is a near-constant column, which is part
+  of why that whole family could only manage +0.015.) An earlier version of this
+  report concluded from that the test was impossible *full stop*. It is not —
+  see below.
 - **The asymmetry does not scale with transcription.** What the screen *can*
   support is splitting guides by their gene's expression and measuring each
   side's gain within each band (`results/asymmetry_expression.csv`):
@@ -672,10 +674,56 @@ advantage could have been column count. Restricting downstream to a random 144
 leaves the asymmetry essentially unchanged (+0.0790 against +0.0782 in the low
 band), so **it is the side, not the budget.**
 
+#### The orientation test does run — on guides that are not in the published matrix
+
+The coding sub-library binds one strand because it was **repurposed from a
+CRISPRi design**, where binding the non-template strand is the point. Guo's
+*intergenic* sub-library was built differently: its Methods say the sgRNAs "were
+designed to target either of the two DNA strands in this new library, in contrast
+to the sgRNAs in our previous library, which bind only the nontemplate strand."
+That library is 10,257 guides — 5,559 across 3,146 promoters and 4,698 across
+4,140 RBSs — and it is **not in the published feature matrix**, so the features
+had to be rebuilt from the genome.
+
+Jacky did that: 8,954 intergenic guides located on NC_000913.2, flanks cut with
+the same recipe family A uses, orientation defined against the nearest gene,
+grouped CV by 100 kb bins, arms the same shape as `asymmetry.py --run`
+(`Jacky/agent-notes/INTERGENIC_ORIENTATION.md`).
+
+| stratum | n | upstream gain | downstream, count-matched | asymmetry |
+|---|---:|---:|---:|---:|
+| all intergenic | 8,954 | +0.081 | +0.115 | **0.034** |
+| **guide opposite the nearest gene** | 4,361 | +0.061 | +0.108 | **0.047** |
+| **guide same way as the nearest gene** | 4,593 | +0.102 | +0.107 | **0.005** |
+
+**The asymmetry depends on orientation.** It is large when the guide faces
+against the neighbouring gene and ≈0 when it faces with it. A second, stricter
+set (Data S4 high-quality, n = 3,645) shows the same pattern more sharply:
+0.064 against −0.015.
+
+That is what a transcription account predicts and **the opposite of what pure
+PAM/R-loop geometry predicts**, which should be flat across orientation. So the
+candidate is re-opened rather than closed.
+
+**How to hold the two results together.** On the *coding* library, the asymmetry
+did not scale with how much the gene is transcribed. On *intergenic* guides, it
+does depend on which way the guide faces relative to the local gene. Those are
+not contradictory — expression level and orientation are different variables, and
+only the second is what a "DNA is asymmetric around a transcription unit" account
+actually requires. The simplest reading is that the asymmetry tracks the
+*geometry* of the local transcription unit rather than its *traffic*.
+
+Four caveats belong with it in the paper: orientation is defined against the
+**nearest gene**, not a curated operon or TSS annotation; the intergenic guides
+target promoters and RBSs, a different biological context from coding knockouts;
+it is one seed with no bootstrap interval on the orientation *difference* yet; and
+it does not distinguish polymerase traffic from any other gene-asymmetric
+chromosomal feature.
+
 **Where that leaves it:** short range has a mechanistic account from PAM-first
-engagement, long range has a measured asymmetry, a ruled-out explanation, and no
-replacement. That is the honest state, and it is a better position than before —
-an open question with one fewer candidate answer.
+engagement. Long range has a measured asymmetry, one ruled-out explanation
+(replication — no sign flip between replichores, 0.049 against 0.048), and one
+live candidate that now has direct supporting evidence rather than none.
 
 ### 4. It is a property of the DNA, not of this particular enzyme
 
@@ -1343,19 +1391,47 @@ Two revised estimates, and they bracket differently from the old pair:
 **The usable range is therefore ≈0.94–0.97, not 0.90–0.93**, and the tiling
 figure is the one to lead with: it is a test–retest of the exact published
 quantity with a **different library**, which is precisely the objection the
-two-enzyme estimate could not answer. It is also conservative, because a
-different library introduces design differences that are not label noise.
+two-enzyme estimate could not answer.
 
-Three caveats that keep this a range rather than a number. The published R²
-values are Pearson on read-count scale while our ceiling is quoted in Spearman,
-so the conversion is an approximation. Fig 2b is given as an **inequality**
-(">0.78") across ten libraries, so 0.883 is a floor on r, not an estimate. And
-the Spearman–Brown step assumes the activity score inherits the read counts'
-reliability, which is the weakest link in that chain — one more reason to prefer
-the tiling route.
+**Why the tiling figure is the better number, not just the smaller one.** The
+two routes are not equally safe, and the direction of each error is known.
 
-**SLICER at 0.707–0.721 is therefore about 74–77% of the way to the limit**,
-against the ~80% the old bracket implied. The headroom is larger than this report
+The replicate route needs the activity score to inherit the **read counts'**
+reliability. It cannot. Guo's label is the `|Z|` of a **Cas9/dCas9 ratio** — two
+count measurements, not one — and a difference of two measurements is never more
+reliable than its components, usually much less, by exactly how much true signal
+the two arms share. The dCas9 arm exists *to* share the library-abundance
+structure, so that fraction is high. Taking each log-count's reliability at the
+Fig 2b floor of 0.883:
+
+| true signal shared between the Cas9 and dCas9 arms | reliability of the ratio score | ceiling |
+|---:|---:|---:|
+| 0% (what the replicate route assumes) | 0.883 | **0.968** |
+| 30% | 0.841 | 0.956 |
+| 50% | 0.791 | **0.940** |
+| 70% | 0.694 | 0.905 |
+
+So **0.968 is what you get only if the control arm shares nothing**, which is the
+one thing it is designed not to do. It is an upper bound, and plausibly a loose
+one.
+
+The tiling route needs none of that. Both sides of Fig 2c are **already the
+published score**, so r = 0.878 *is* its reliability — no propagation of count
+noise, no Spearman–Brown step, no assumption about the ratio. Its own sampling
+error is small: on 901 guides, r ∈ [0.863, 0.893], so the ceiling is
+**0.937 [0.929, 0.945]**. Its bias is in the opposite, conservative direction —
+a different library adds design differences that are not label noise, so the true
+reliability is a little higher than 0.878.
+
+**So: quote 0.94 as the working figure, with 0.94–0.97 as the range**, and say
+which is which. Two residual caveats apply to both routes: the published values
+are Pearson while the ceiling is quoted in Spearman, so the conversion
+approximates; and Fig 2b is an inequality across ten libraries, so 0.883 is a
+floor rather than an estimate.
+
+**SLICER at 0.707–0.721 is therefore about 77% of the way to the working
+figure of 0.94**, or 74% against the loose upper bound, against the ~80% the old
+bracket implied. The headroom is larger than this report
 previously claimed, which makes the saturation results in the rest of this part
 more interesting rather than less: the model stops improving well short of a
 ceiling that is further away than we thought.
