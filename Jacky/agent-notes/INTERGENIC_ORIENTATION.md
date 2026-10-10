@@ -67,14 +67,32 @@ guides, the honest state is:
 - **Guide orientation relative to the local gene does change the asymmetry**
   once both orientations exist (intergenic).
 
+### Bootstrap CI on the orientation gap (added)
+
+Grouped 100 kb block bootstrap on OOF Spearman asymmetries
+(`scripts/run_orientation_ci.py`, 2000 resamples):
+
+| set | asym opposite [95% CI] | asym same [95% CI] | Δ (opp−same) [95% CI] | P(Δ≤0) |
+|---|---|---|---|---:|
+| **s6_good** | **0.040 [0.015, 0.063]** | 0.014 [−0.008, 0.034] | 0.026 [−0.006, 0.058] | 0.054 |
+| s4_hq | **0.047 [0.017, 0.076]** | 0.002 [−0.034, 0.037] | 0.045 [−0.001, 0.094] | 0.028 |
+
+**Reading:** On the primary set, opposite-strand asymmetry is clearly positive;
+same-strand asymmetry’s CI includes zero. The *difference* Δ is directionally
+positive but **borderline at 95%** (CI just includes 0; one-sided ≈0.05). So:
+pattern supported; don’t over-claim a precise Δ. Artefacts:
+`results/intergenic_orientation_delta_ci.json`.
+
 ### Caveats (state in the paper)
 
 1. Orientation is vs **nearest gene**, not a curated operon/TSS annotation —
    weaker than an ideal transcription-direction label.
 2. Intergenic labels are a different biological context (promoter/RBS targets).
-3. Single seed, 100 kb grouped CV; no bootstrap CI on the asymmetry difference yet.
+3. Single seed, 100 kb grouped CV; Δ CI is borderline for s6_good.
 4. Does not by itself identify polymerase traffic vs other gene-asymmetric
    chromosomal features.
+5. OOF-pooled asymmetry point estimates differ slightly from the fold-mean
+   table above (same sign/pattern).
 
 ## What changes in the progress report
 
