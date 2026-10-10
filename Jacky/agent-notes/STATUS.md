@@ -1,7 +1,7 @@
 # Work-plan status
 
-Last updated after Runjia’s 10 Oct reply (`e4a71fc`: orientation accepted;
-ceiling → ≈0.94 tiling lead). Reply notes: `RUNJIA_REPLY_2026-10-10.md`.
+Last updated after orientation Δ bootstrap CI.
+Reply notes: `RUNJIA_REPLY_2026-10-10.md`.
 
 ## Process agreement — `Runjia/sgrna/`
 
